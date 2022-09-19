@@ -49,7 +49,9 @@ gray = cv2.cvtColor(kmeans, cv2.COLOR_BGR2GRAY)
 blur = cv2.GaussianBlur(gray, (3,3), 0)
 thresh = cv2.adaptiveThreshold(blur,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,21,2)
 
+
 nb_components, output, stats, centroids = cv2.connectedComponentsWithStats(thresh, connectivity=4)
+
 sizes = stats[:, -1]
 
 max_label = 1
