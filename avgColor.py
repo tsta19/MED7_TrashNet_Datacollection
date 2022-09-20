@@ -1,22 +1,26 @@
 import cv2
 import numpy as np
-import pandas as pd
-import skimage
 from skimage.io import imread, imshow
 from skimage.color import rgb2gray, rgb2hsv
 from skimage.measure import label, regionprops, regionprops_table
 from skimage.filters import threshold_otsu
 from scipy.ndimage import median_filter
 from matplotlib.patches import Rectangle
+from skimage.morphology import area_closing
 from tqdm import tqdm
+import pandas as pd
+import skimage
+import matplotlib.pyplot as plt
 
-cap = cv2.VideoCapture('trimVideo.mp4')
+cap = cv2.VideoCapture('data/trimVideo.mp4')
 imgArray = []
-treshold = 20
+treshold = 28
 counter = 0
 ret, imgFrame = cap.read()
 
-newImg = np.zeros((imgFrame.shape[0],imgFrame.shape[1],3),np.uint8)
+properties =['area','bbox']
+
+#newImg = np.zeros((imgFrame.shape[0],imgFrame.shape[1],3),np.uint8)
 
 
 while cap.isOpened():
@@ -54,24 +58,24 @@ while cap.isOpened():
 
     counter += 1
     print(counter)
-    if counter == 50:
-        cv2.imwrite('sodaT.jpg', frame_treshold)
-        cv2.imwrite('soda.jpg', roi)
-    if counter == 570:
-        cv2.imwrite('clothT.jpg', frame_treshold)
-        cv2.imwrite('cloth.jpg', roi)
-    if counter == 850:
-        cv2.imwrite('brownshitT.jpg', frame_treshold)
-        cv2.imwrite('brownshit.jpg', roi)
-    if counter == 1240:
-        cv2.imwrite('blueshitT.jpg', frame_treshold)
-        cv2.imwrite('blueshit.jpg', roi)
 
 
     frame_treshold = cv2.inRange(blur,(avgBlueLow,avgGreenLow,avgRedLow),(avgBlueHigh,avgGreenHigh,avgRedHigh))
+    threshInv = cv2.bitwise_not(frame_treshold)
+    tree_blobs = label(threshInv > 0)
+    df = pd.DataFrame(regionprops_table(tree_blobs, properties=properties))
+    maxval = 0
+    for i in range(len(df['area'])):
+        if df['area'][i] == max(df['area']):
+            sodaXY1 = (df['bbox-1'][i], df['bbox-0'][i])
+            sodaXY2 = (df['bbox-3'][i], df['bbox-2'][i])
+            cv2.rectangle(threshInv,sodaXY1,sodaXY2,(255,0,0))
+
+
 
     cv2.imshow('avg', avg_image)
-    cv2.imshow('tresh', frame_treshold)
+    cv2.imshow('tresh', threshInv)
+    print(df.to_string())
 
 
 

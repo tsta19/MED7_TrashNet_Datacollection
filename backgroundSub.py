@@ -1,6 +1,15 @@
 import cv2
 import numpy as np
-
+from skimage.io import imread, imshow
+from skimage.color import rgb2gray, rgb2hsv
+from skimage.measure import label, regionprops, regionprops_table
+from skimage.filters import threshold_otsu
+from scipy.ndimage import median_filter
+from matplotlib.patches import Rectangle
+from skimage.morphology import area_closing
+from tqdm import tqdm
+import pandas as pd
+import skimage
 
 vid = cv2.VideoCapture('samplevideo.mp4')
 
