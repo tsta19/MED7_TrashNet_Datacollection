@@ -7,21 +7,19 @@ from skimage.filters import threshold_otsu
 from scipy.ndimage import median_filter
 from matplotlib.patches import Rectangle
 from skimage.morphology import area_closing
-from tqdm import tqdm
 import pandas as pd
 import skimage
 import matplotlib.pyplot as plt
 
 cap = cv2.VideoCapture('data/trimVideo.mp4')
 imgArray = []
-treshold = 28
+treshold = 30
 counter = 0
 ret, imgFrame = cap.read()
 
 properties =['area','bbox']
 
 #newImg = np.zeros((imgFrame.shape[0],imgFrame.shape[1],3),np.uint8)
-
 
 while cap.isOpened():
     ret, frame = cap.read()
@@ -43,7 +41,7 @@ while cap.isOpened():
             avg_image = cv2.addWeighted(imgArray[i], alpha, avg_image, beta, 0.0)
     else:
         imgArray.pop(0)
-    blur = cv2.medianBlur(roi,7)
+    blur = cv2.medianBlur(roi,3)
 
     avgBlue = np.average(avg_image[:,:,0])
     avgGreen = np.average(avg_image[:, :, 1])
@@ -64,18 +62,15 @@ while cap.isOpened():
     threshInv = cv2.bitwise_not(frame_treshold)
     tree_blobs = label(threshInv > 0)
     df = pd.DataFrame(regionprops_table(tree_blobs, properties=properties))
-    maxval = 0
     for i in range(len(df['area'])):
         if df['area'][i] == max(df['area']):
             sodaXY1 = (df['bbox-1'][i], df['bbox-0'][i])
             sodaXY2 = (df['bbox-3'][i], df['bbox-2'][i])
             cv2.rectangle(threshInv,sodaXY1,sodaXY2,(255,0,0))
 
-
-
+    f = area_closing(threshInv, 64, 5)
     cv2.imshow('avg', avg_image)
-    cv2.imshow('tresh', threshInv)
-    print(df.to_string())
+    cv2.imshow('tresh', f)
 
 
 
