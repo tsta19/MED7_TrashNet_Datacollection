@@ -7,11 +7,12 @@ from skimage.filters import threshold_otsu
 from scipy.ndimage import median_filter
 from matplotlib.patches import Rectangle
 from skimage.morphology import area_closing
+from skimage.morphology import area_opening
 import pandas as pd
 import skimage
 import matplotlib.pyplot as plt
 
-cap = cv2.VideoCapture('data/GL010020.mp4')
+cap = cv2.VideoCapture('data/GL010021.mp4')
 imgArray = []
 treshold = 40
 counter = 0
@@ -23,7 +24,7 @@ properties =['area','bbox','bbox_area']
 
 while cap.isOpened():
     ret, frame = cap.read()
-    frame2 = frame
+    ret2, frame2 = cap.read()
     if not ret:
         print("Cant read video")
         break
@@ -31,10 +32,11 @@ while cap.isOpened():
     #cv2.imshow('frame',frame)
     roi = frame[0:400, 300:560]
     roi2 = frame2[0:400, 300:560]
+
     if cv2.waitKey(1) == ('q'):
         break
     if len(imgArray) < 10:
-        imgArray.append(roi)
+        imgArray.append(roi2)
         avg_image = imgArray[0]
         for i in range(len(imgArray)):
             alpha = 1.0 / (i + 1)
@@ -66,12 +68,12 @@ while cap.isOpened():
         if df['bbox_area'][i] == max(df['bbox_area']):
             sodaXY1 = (df['bbox-1'][i], df['bbox-0'][i])
             sodaXY2 = (df['bbox-3'][i], df['bbox-2'][i])
-            cv2.rectangle(roi2,sodaXY1,sodaXY2,(255,0,0))
+            cv2.rectangle(roi,sodaXY1,sodaXY2,(255,0,0))
 
-    f = area_closing(threshInv, 64, 1)
+    f = area_opening(threshInv, 256, 1)
     cv2.imshow('avg', avg_image)
     cv2.imshow('tresh', f)
-    cv2.imshow('roi', roi2)
+    cv2.imshow('roi', roi)
     #cv2.imshow('roi', roi)
 
 
