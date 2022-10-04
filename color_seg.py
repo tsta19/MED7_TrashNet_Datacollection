@@ -2,28 +2,81 @@ import cv2
 import numpy as np
 
 
+def getContourCoordinates(currentFrame):
+    leftRegionIMG = currentFrame[int(currentFrame.shape[0] / 2):currentFrame.shape[0], 0:int(currentFrame.shape[1] / 2)]
+    rightRegionIMG = currentFrame[int(currentFrame.shape[0] / 2): currentFrame.shape[0],
+                     int(currentFrame.shape[1] / 2):currentFrame.shape[1]]
+    kernelClose = np.ones((5, 5), np.uint8)
+    kernelErode = np.ones((1, 1), np.uint8)
+
+    leftCanny = cv2.Canny(leftRegionIMG, threshold1=50, threshold2=150, apertureSize=3, L2gradient=True)
+    leftCanny = cv2.morphologyEx(leftCanny, cv2.MORPH_CLOSE, kernelClose, iterations=2)
+
+    rightCanny = cv2.Canny(rightRegionIMG, threshold1=50, threshold2=150, apertureSize=3, L2gradient=True)
+    rightCanny = cv2.morphologyEx(rightCanny, cv2.MORPH_CLOSE, kernelClose, iterations=2)
+
+    xR, yR = np.where(rightCanny < 1)
+    blobsR = np.zeros_like(rightCanny)
+    blobsR[xR, yR] = 255
+    blobsR = cv2.erode(blobsR, kernelErode)
+
+    xL, yL = np.where(leftCanny < 1)
+    blobsL = np.zeros_like(leftCanny)
+    blobsL[xL, yL] = 255
+    blobsL = cv2.erode(blobsL, kernelErode)
+
+    contoursR, hierarchy = cv2.findContours(blobsR, cv2.RETR_LIST, cv2.CHAIN_APPROX_TC89_L1)
+    contoursL, hierarchy = cv2.findContours(blobsL, cv2.RETR_LIST, cv2.CHAIN_APPROX_TC89_L1)
+
+    largestCntR = contoursR[0]
+    largestCntL = contoursL[0]
+
+    if len(contoursR) > 1:
+        for i in range(0, len(contoursR)):
+            if len(largestCntR) < len(contoursR[i]):
+                largestCntR = contoursR[i]
+
+    if len(contoursL) > 1:
+        for i in range(0, len(contoursL)):
+            if len(largestCntL) < len(contoursL[i]):
+                largestCntL = contoursL[i]
+    else:
+        largestCntL = contoursL[0]
+
+    #cv2.drawContours(rightRegionIMG, contours, -1, (0, 255, 0), 3)
+    cv2.drawContours(rightRegionIMG, largestCntR, -1, (255, 0, 0), 3)
+    cv2.drawContours(leftRegionIMG, largestCntL, -1, (255, 0, 0), 3)
+
+    cv2.imshow('blobL', blobsL)
+    cv2.imshow('blobR', blobsR)
+
+    cv2.imshow('left', leftRegionIMG)
+    cv2.imshow('right', rightRegionIMG)
+
+    # cv2.imshow('Leftcanny', leftCanny)
+    # cv2.imshow('Rightcanny', rightCanny)
+    #return largestCntL, largestCntR
+
+
 def colorSeg(motionVar, prevFrame, currentFrame):
     # Convert BGR to HSV
     motion = motionVar
 
     frame_diff = cv2.absdiff(currentFrame, prevFrame)
-    #cv2.imshow('framediff', frame_diff)
-    leftRegionIMG = currentFrame[0:currentFrame.shape[0], 0:int(currentFrame.shape[1] / 2)]
-    rightRegionIMG = currentFrame[0:currentFrame.shape[0], int(currentFrame.shape[1] / 2):currentFrame.shape[1]]
+    cv2.imshow('framediff', frame_diff)
 
-    cv2.imshow('left', leftRegionIMG)
-    cv2.imshow('right', rightRegionIMG)
     hsv = cv2.cvtColor(currentFrame, cv2.COLOR_BGR2HSV)
-    mask = cv2.inRange(hsv, (36, 25, 25), (70, 255, 255))
+    mask = cv2.inRange(hsv, (36, 0, 0), (70, 255, 255))
 
-    kernel = np.ones((20, 20), np.uint8)
+    kernel = np.ones((5, 5), np.uint8)
 
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
 
     segmentedFrame = cv2.bitwise_not(currentFrame, prevFrame)
-    cv2.imshow('segf',segmentedFrame)
+    cv2.imshow('segf', segmentedFrame)
     contours, hierarchy = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
     output = cv2.drawContours(segmentedFrame, contours, -1, (0, 200, 0), 1)
 
     # ROI visualization
@@ -58,12 +111,14 @@ if __name__ == '__main__':
     motion = 0
     while cap.isOpened():
         previousFrame = frame[:]
-        #cv2.imshow('prev', previousFrame)
+        # cv2.imshow('prev', previousFrame)
         frameCount += 1
         ret, frame = cap.read()
         cv2.imshow('current', frame)
 
-        colorSeg(motion, previousFrame, frame)
+        if frameCount > 150:
+            # colorSeg(motion, previousFrame, frame)
+            getContourCoordinates(previousFrame, frame)
 
         if cv2.waitKey(1) == ord('s'):
             break
