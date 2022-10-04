@@ -118,7 +118,7 @@ if __name__ == '__main__':
 
         if frameCount > 150:
             # colorSeg(motion, previousFrame, frame)
-            getContourCoordinates(previousFrame, frame)
+            getContourCoordinates(frame)
 
         if cv2.waitKey(1) == ord('s'):
             break
