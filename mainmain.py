@@ -146,7 +146,6 @@ def regionBasedDetection(frame, leftArrX, leftArrY):
         cv.imshow('cx', Cx)
         cv.imshow('cy', Cy)
 
-        
         for i in range(0, Ax.shape[0]):
             for j in range(0, Ax.shape[1]):
                 gradientMatrix = [[(Ax[i][j])**2, (Ax[i][j])*(Ay[i][j])], [(Ax[i][j])*(Ay[i][j]), (Ay[i][j])**2]]
@@ -157,24 +156,14 @@ def regionBasedDetection(frame, leftArrX, leftArrY):
                 OFvector = np.matmul(gradientMatrix,changeMatrix)
                 #print('of', OFvector)
                 ##OFimgarray[i][j] = OFvector
-
-
-                
-
-                
-                
-        
         
         leftArrX.clear()
         leftArrY.clear()
         return canny
-        
-    
 
     cv.waitKey(0)
     
     return canny
-
 
 
 if __name__ == '__main__':
@@ -198,7 +187,7 @@ if __name__ == '__main__':
 
         
 
-        imggg = edgeDiffTracking(croppedIMG)
+        #imggg = edgeDiffTracking(croppedIMG)
 
         if diff is not None:
             # print('shape:', diff.shape)
