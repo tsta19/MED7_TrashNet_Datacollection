@@ -168,7 +168,7 @@ def regionBasedDetection(frame, leftArrX, leftArrY):
 
 if __name__ == '__main__':
     #cap = cv.VideoCapture('data/trimVideo.mp4')
-    cap = cv.VideoCapture('E:/MED-local/MED7/MED7_TrashNet_Datacollection/data/trimVideo.mp4')
+    cap = cv.VideoCapture('data/outside_videos/outsidecalibratoin.mp4')
     templateIMG = cv.imread('data/template.png')
     print("open  = ", cap.isOpened())
     frames = []
@@ -180,7 +180,7 @@ if __name__ == '__main__':
         croppedIMG = frame[int(frame.shape[0] * 0.40):frame.shape[0], 0:frame.shape[1]]
 
         diff = compareMovement(croppedIMG, frames)
-        regioIMG = regionBasedDetection(croppedIMG, leftRegionFrames, rightRegionFrames)
+        #regioIMG = regionBasedDetection(croppedIMG, leftRegionFrames, rightRegionFrames)
         
         #v.imshow('region', regioIMG)
 
@@ -205,7 +205,8 @@ if __name__ == '__main__':
         # kmeans = images.kmeans.kMeansSegmentation(frame)
         # cv.imshow('kmeans')
 
-        
+        #edges = edgeDiffTracking(frame)
+
 
         keyboard = cv.waitKey(30)
         if keyboard == 'q' or keyboard == 27:

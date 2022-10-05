@@ -1,11 +1,34 @@
 import cv2
 import numpy as np
+#from dense_optical_flow import *
+from sparse_of import SparseOF
 
 
-def getContourCoordinates(currentFrame):
+def tomasiTacking(frame):
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    corners = cv2.goodFeaturesToTrack(gray, 30, 0.05, 15)
+    corners = np.int0(corners)
+    x_list = []
+    y_list = []
+
+    for i in corners:
+        x, y = i.ravel()
+        cv2.circle(frame, (x, y), 4, 255, 4)
+        x_list.append(x)
+        y_list.append(y)
+
+
+    return x_list, y_list
+
+def getROI(currentFrame):
     leftRegionIMG = currentFrame[int(currentFrame.shape[0] / 2):currentFrame.shape[0], 0:int(currentFrame.shape[1] / 2)]
     rightRegionIMG = currentFrame[int(currentFrame.shape[0] / 2): currentFrame.shape[0],
                      int(currentFrame.shape[1] / 2):currentFrame.shape[1]]
+
+    return leftRegionIMG, rightRegionIMG
+
+def getContourCoordinates(leftRegionIMG, rightRegionIMG):
+
     kernelClose = np.ones((5, 5), np.uint8)
     kernelErode = np.ones((1, 1), np.uint8)
 
@@ -25,8 +48,10 @@ def getContourCoordinates(currentFrame):
     blobsL[xL, yL] = 255
     blobsL = cv2.erode(blobsL, kernelErode)
 
-    contoursR, hierarchy = cv2.findContours(blobsR, cv2.RETR_LIST, cv2.CHAIN_APPROX_TC89_L1)
-    contoursL, hierarchy = cv2.findContours(blobsL, cv2.RETR_LIST, cv2.CHAIN_APPROX_TC89_L1)
+
+
+    contoursR, hierarchy = cv2.findContours(blobsR, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
+    contoursL, hierarchy = cv2.findContours(blobsL, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
 
     largestCntR = contoursR[0]
     largestCntL = contoursL[0]
@@ -43,7 +68,7 @@ def getContourCoordinates(currentFrame):
     else:
         largestCntL = contoursL[0]
 
-    #cv2.drawContours(rightRegionIMG, contours, -1, (0, 255, 0), 3)
+    # cv2.drawContours(rightRegionIMG, contours, -1, (0, 255, 0), 3)
     cv2.drawContours(rightRegionIMG, largestCntR, -1, (255, 0, 0), 3)
     cv2.drawContours(leftRegionIMG, largestCntL, -1, (255, 0, 0), 3)
 
@@ -55,7 +80,7 @@ def getContourCoordinates(currentFrame):
 
     # cv2.imshow('Leftcanny', leftCanny)
     # cv2.imshow('Rightcanny', rightCanny)
-    #return largestCntL, largestCntR
+    #return leftRegionIMG, rightRegionIMG
 
 
 def colorSeg(motionVar, prevFrame, currentFrame):
@@ -109,22 +134,36 @@ if __name__ == '__main__':
 
     ret, frame = cap.read()
     motion = 0
+    sparseOF = SparseOF()
+
     while cap.isOpened():
         previousFrame = frame[:]
         # cv2.imshow('prev', previousFrame)
         frameCount += 1
         ret, frame = cap.read()
         cv2.imshow('current', frame)
+        left, right = getROI(frame)
+        prevLeft, prevRight = getROI(previousFrame)
 
         if frameCount > 150:
+
             # colorSeg(motion, previousFrame, frame)
-            getContourCoordinates(frame)
+            getContourCoordinates(left, right)
+
+            sparseOF.sparseOF(left, prevLeft)
+            sparseOF.sparseOF(right, prevRight)
+
+
+
+
 
         if cv2.waitKey(1) == ord('s'):
             break
 
     cap.release()
     cv2.destroyAllWindows()
+
+
 
     # import cv2 as cv
     #
