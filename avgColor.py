@@ -76,6 +76,33 @@ while cap.isOpened():
     #cv2.imshow('roi', roi)
 
 
+def avgColTresh(frame,treshold):
+    imageArray = []
+    if len(imgArray) < 10:
+        imgArray.append(roi2)
+        avg_image = imgArray[0]
+        for i in range(len(imgArray)):
+            alpha = 1.0 / (i + 1)
+            beta = 1.0 - alpha
+            avg_image = cv2.addWeighted(imgArray[i], alpha, avg_image, beta, 0.0)
+    else:
+        imgArray.pop(0)
+    blur = cv2.medianBlur(roi,3)
+    avgBlue = np.average(avg_image[:, :, 0])
+    avgGreen = np.average(avg_image[:, :, 1])
+    avgRed = np.average(avg_image[:, :, 2])
+
+    avgBlueHigh = avgBlue + treshold
+    avgGreenHigh = avgGreen + treshold
+    avgRedHigh = avgRed + treshold
+    avgBlueLow = avgBlue - treshold
+    avgGreenLow = avgGreen - treshold
+    avgRedLow = avgRed - treshold
+
+    frame_treshold = cv2.inRange(blur, (avgBlueLow, avgGreenLow, avgRedLow), (avgBlueHigh, avgGreenHigh, avgRedHigh))
+    threshInv = cv2.bitwise_not(frame_treshold)
+    f = area_opening(threshInv, 256, 1)
+    return f
 
 cap.release()
 cv2.destroyAllWindows()
