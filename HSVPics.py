@@ -12,6 +12,7 @@ import pandas as pd
 import skimage
 import matplotlib.pyplot as plt
 
+
 image = cv2.imread('data/kop.png')
 hsv = cv2.cvtColor(image,cv2.COLOR_BGR2HSV)
 roi = hsv[100:600,0:1440]

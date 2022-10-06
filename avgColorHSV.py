@@ -81,7 +81,28 @@ while cap.isOpened():
     cv2.imshow('roi', roi)
     #cv2.imshow('roi', roi)
 
+def hsvTresh(frame, treshold):
+    imageArray = []
+    if len(imageArray) < 5:
+        imgArray.append(frame)
+        avg_image = imgArray[0]
+        for i in range(len(imageArray)):
+            alpha = 1.0 / (i + 1)
+            beta = 1.0 - alpha
+            avg_image = cv2.addWeighted(imgArray[i], alpha, avg_image, beta, 0.0)
+    else:
+        imgArray.pop(0)
+    blur = cv2.medianBlur(frame,3)
 
+    avgHue = np.average(avg_image[:,:,0])
 
+    avgHueHigh = avgHue + treshold
+    avgHueLow = avgHue - treshold
+
+    frame_treshold = cv2.inRange(blur, (avgHueLow, 0, 0), (avgHueHigh, 255, 255))
+    threshInv = cv2.bitwise_not(frame_treshold)
+    f = area_opening(threshInv, 256, 1)
+
+    return f
 cap.release()
 cv2.destroyAllWindows()
