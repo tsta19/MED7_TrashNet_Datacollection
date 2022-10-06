@@ -12,9 +12,9 @@ import pandas as pd
 import skimage
 import matplotlib.pyplot as plt
 
-cap = cv2.VideoCapture('data/GL010021.mp4')
+cap = cv2.VideoCapture('data/GL010020.mp4')
 imgArray = []
-treshold = 40
+treshold = 15
 counter = 0
 ret, imgFrame = cap.read()
 
@@ -29,12 +29,14 @@ while cap.isOpened():
         print("Cant read video")
         break
     #cv2.imshow('frame',frame)
+    hsv = cv2.cvtColor(frame2, cv2.COLOR_BGR2HSV)
     roi = frame[0:400, 300:560]
-    roi2 = frame2[0:400, 300:560]
+    roi2 = hsv[0:400, 300:560]
+
 
     if cv2.waitKey(1) == ('q'):
         break
-    if len(imgArray) < 10:
+    if len(imgArray) < 5:
         imgArray.append(roi2)
         avg_image = imgArray[0]
         for i in range(len(imgArray)):
@@ -43,23 +45,27 @@ while cap.isOpened():
             avg_image = cv2.addWeighted(imgArray[i], alpha, avg_image, beta, 0.0)
     else:
         imgArray.pop(0)
-    blur = cv2.medianBlur(roi,3)
+    blur = cv2.medianBlur(roi2,3)
 
-    avgBlue = np.average(avg_image[:,:,0])
-    avgGreen = np.average(avg_image[:, :, 1])
-    avgRed = np.average(avg_image[:, :, 2])
+    avgHue = np.average(avg_image[:,:,0])
+    avgSat = np.average(avg_image[:, :, 1])
+    avgVal = np.average(avg_image[:, :, 2])
 
-    avgBlueHigh = avgBlue + treshold
-    avgGreenHigh = avgGreen + treshold
-    avgRedHigh = avgRed + treshold
-    avgBlueLow = avgBlue - treshold
-    avgGreenLow = avgGreen - treshold
-    avgRedLow = avgRed - treshold
+    avgHueHigh = avgHue + treshold
+    avgSatHigh = avgSat + treshold
+    avgValHigh = avgVal + treshold
+    avgHueLow = avgHue - treshold
+    avgSatLow = avgSat - treshold
+    avgValLow = avgVal - treshold
 
     counter += 1
     print(counter)
+    print("Hue: " + str(avgHue))
+    print("sat: " + str(avgSat))
+    print("val: " + str(avgVal))
 
-    frame_treshold = cv2.inRange(blur,(avgBlueLow,avgGreenLow,avgRedLow),(avgBlueHigh,avgGreenHigh,avgRedHigh))
+
+    frame_treshold = cv2.inRange(roi2,(avgHueLow,0,0),(avgHueHigh,255,255))
     threshInv = cv2.bitwise_not(frame_treshold)
     tree_blobs = label(threshInv > 0)
     df = pd.DataFrame(regionprops_table(tree_blobs, properties=properties))
