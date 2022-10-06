@@ -1,7 +1,11 @@
 import cv2
 import numpy as np
-#from dense_optical_flow import *
+# from dense_optical_flow import *
 from sparse_of import SparseOF
+import skimage
+from avgColor import avgColTresh
+from avgColorHSV import hsvTresh
+from collections import Counter
 
 
 def tomasiTacking(frame):
@@ -17,8 +21,8 @@ def tomasiTacking(frame):
         x_list.append(x)
         y_list.append(y)
 
-
     return x_list, y_list
+
 
 def getROI(currentFrame):
     leftRegionIMG = currentFrame[int(currentFrame.shape[0] / 2):currentFrame.shape[0], 0:int(currentFrame.shape[1] / 2)]
@@ -27,8 +31,8 @@ def getROI(currentFrame):
 
     return leftRegionIMG, rightRegionIMG
 
-def getContourCoordinates(leftRegionIMG, rightRegionIMG):
 
+def getContourCoordinates(leftRegionIMG, rightRegionIMG):
     kernelClose = np.ones((5, 5), np.uint8)
     kernelErode = np.ones((1, 1), np.uint8)
 
@@ -48,10 +52,8 @@ def getContourCoordinates(leftRegionIMG, rightRegionIMG):
     blobsL[xL, yL] = 255
     blobsL = cv2.erode(blobsL, kernelErode)
 
-
-
-    contoursR, hierarchy = cv2.findContours(blobsR, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
-    contoursL, hierarchy = cv2.findContours(blobsL, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
+    contoursR, hierarchy = cv2.findContours(blobsR, cv2.RETR_LIST, cv2.CHAIN_APPROX_TC89_KCOS)
+    contoursL, hierarchy = cv2.findContours(blobsL, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
     largestCntR = contoursR[0]
     largestCntL = contoursL[0]
@@ -68,19 +70,55 @@ def getContourCoordinates(leftRegionIMG, rightRegionIMG):
     else:
         largestCntL = contoursL[0]
 
+    # print(f'Contour: {largestCntL}')
+    # print(f'Contour[0]: {largestCntL[0]}')
+    # print(f'Contour[0][0]: {largestCntL[0][0]}')
+    # test = largestCntL[0][0]
+    # print(f'test[0]: {test[0]}')
+    # print(f'test[1]: {test[1]}')
+    # print(f'len: {len(largestCntR)}')
     # cv2.drawContours(rightRegionIMG, contours, -1, (0, 255, 0), 3)
-    cv2.drawContours(rightRegionIMG, largestCntR, -1, (255, 0, 0), 3)
-    cv2.drawContours(leftRegionIMG, largestCntL, -1, (255, 0, 0), 3)
+    #cv2.drawContours(rightRegionIMG, largestCntR, -1, (255, 0, 0), 3)
+    #cv2.drawContours(leftRegionIMG, largestCntL, -1, (255, 0, 0), 3)
 
-    cv2.imshow('blobL', blobsL)
-    cv2.imshow('blobR', blobsR)
-
-    cv2.imshow('left', leftRegionIMG)
-    cv2.imshow('right', rightRegionIMG)
+    # cv2.imshow('blobL', blobsL)
+    # cv2.imshow('blobR', blobsR)
+    #
+    # cv2.imshow('left', leftRegionIMG)
+    # cv2.imshow('right', rightRegionIMG)
+    # cv2.waitKey(0)
 
     # cv2.imshow('Leftcanny', leftCanny)
     # cv2.imshow('Rightcanny', rightCanny)
-    #return leftRegionIMG, rightRegionIMG
+    return largestCntL, largestCntR
+
+
+def findMostCommonContour(contourCoordinates):
+
+    coordsArray = []
+    mostCommonCnt = []
+
+
+    for i in range(0, len(contourCoordinates)):
+        tempCnt = contourCoordinates[i]
+        for w in range(0, len(contourCoordinates[i])):
+            temp = tempCnt[w][0]
+            # print(f'temp: {temp}')
+            coordsArray.append(temp)
+
+
+    repeatedCoords = tuple(map(tuple, coordsArray))
+    counter = Counter(repeatedCoords)
+
+    for coord in counter:
+        if counter[coord] > 50:
+            print(f'Coordinate: {coord}, Occurences: {counter[coord]}')
+            mostCommonCnt.append(coord)
+
+    mostCommonCnt = [np.asarray(mostCommonCnt)]
+    print('mostCommonCnt:', mostCommonCnt)
+    #print(f'Most common x-coordinates and their occurences: \n {mstCommonCoords} \n and length of list: {len(mstCommonCoords)}')
+    return mostCommonCnt
 
 
 def colorSeg(motionVar, prevFrame, currentFrame):
@@ -129,14 +167,17 @@ def colorSeg(motionVar, prevFrame, currentFrame):
 
 if __name__ == '__main__':
     frameCount = 0
+    calibrating = True
 
     cap = cv2.VideoCapture('data/outside_videos/outsidecalibratoin.mp4')
 
     ret, frame = cap.read()
     motion = 0
     sparseOF = SparseOF()
+    leftCnts = []
+    rightCnts = []
 
-    while cap.isOpened():
+    while cap.isOpened() and calibrating:
         previousFrame = frame[:]
         # cv2.imshow('prev', previousFrame)
         frameCount += 1
@@ -145,25 +186,58 @@ if __name__ == '__main__':
         left, right = getROI(frame)
         prevLeft, prevRight = getROI(previousFrame)
 
+
         if frameCount > 150:
-
             # colorSeg(motion, previousFrame, frame)
-            getContourCoordinates(left, right)
+            leftcnt, rightcnt = getContourCoordinates(left, right)
+            print(frameCount)
+            #print(leftcnt)
+            #cv2.waitKey(0)
+            leftCnts.append(leftcnt)
+            rightCnts.append(rightcnt)
 
-            sparseOF.sparseOF(left, prevLeft)
-            sparseOF.sparseOF(right, prevRight)
+            if frameCount > 500:
+                # print(f'Len leftcnts: {len(leftCnts)}')
+                # print(f'Len rightcnts: {len(rightCnts)}')
+                # print(f'leftcnts[0][0]: {leftCnts[0][0]}')
+                # print(f'leftcnts[1][0]: {leftCnts[1][0]}')
+                # print(f'leftcnts[[0][0]]: {leftCnts[0][0]}')
+                # print('------------------------')
+                # temp = leftCnts[0][0]
+                # temp1 = leftCnts[1][0]
+                # print(f'temp[0]: {temp[0]}')
+                # print(f'temp1[0]: {temp1[0]}')
+                # print(f'len leftCnts[0]: {len(leftCnts[0])}')
+                # temp3 = leftCnts[0]
+                # print(f'temp3[0][0]: {temp3[0][0]}')
+                # print(f'temp3[1][0]: {temp3[1][0]}')
+                # cv2.waitKey(0)
+                leftcontour = findMostCommonContour(leftCnts)
+                rightcontour = findMostCommonContour(rightCnts)
+                #cv2.circle(left, leftcontour, radius=0, color=(0, 0, 255), thickness=-1)
+                cv2.drawContours(right, rightcontour, -1, (255, 0, 0), 3)
+                #cv2.drawContours(left, leftcontour, -1, (255, 0, 0), 3)
+                cv2.imshow('left',left)
+                cv2.imshow('right', right)
+                #cv2.waitKey(0)
 
+            # leftHSVthresh = hsvTresh(left)
+            # rightHSVthresh = hsvTresh(right)
+            # cv2.imshow('leftHSV', leftHSVthresh)
+            # cv2.imshow('rightHSV', rightHSVthresh)
+            # leftRGBthresh = avgColTresh(left)
+            # rightRGBthresh = avgColTresh(right)
+            # cv2.imshow('left', leftRGBthresh)
+            # cv2.imshow('right', rightRGBthresh)
 
-
-
+            # sparseOF.sparseOF(left, prevLeft)
+            # sparseOF.sparseOF(right, prevRight)
 
         if cv2.waitKey(1) == ord('s'):
             break
 
     cap.release()
     cv2.destroyAllWindows()
-
-
 
     # import cv2 as cv
     #
