@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 # from dense_optical_flow import *
 from sparse_of import SparseOF
-import skimage
+
 from avgColor import avgColTresh
 from avgColorHSV import hsvTresh
 from collections import Counter
@@ -111,12 +111,14 @@ def findMostCommonContour(contourCoordinates):
     counter = Counter(repeatedCoords)
 
     for coord in counter:
-        if counter[coord] > 50:
-            print(f'Coordinate: {coord}, Occurences: {counter[coord]}')
+        if counter[coord] > 30:
+            #print(f'Coordinate: {coord}, Occurences: {counter[coord]}')
             mostCommonCnt.append(coord)
-
+    
     mostCommonCnt = [np.asarray(mostCommonCnt)]
-    print('mostCommonCnt:', mostCommonCnt)
+    print(f'len: {len(mostCommonCnt)}')
+    print(f'len: {len(mostCommonCnt[0])}')
+    #print('mostCommonCnt:', mostCommonCnt)
     #print(f'Most common x-coordinates and their occurences: \n {mstCommonCoords} \n and length of list: {len(mstCommonCoords)}')
     return mostCommonCnt
 
@@ -176,6 +178,7 @@ if __name__ == '__main__':
     sparseOF = SparseOF()
     leftCnts = []
     rightCnts = []
+    hullList = []
 
     while cap.isOpened() and calibrating:
         previousFrame = frame[:]
@@ -214,10 +217,19 @@ if __name__ == '__main__':
                 # cv2.waitKey(0)
                 leftcontour = findMostCommonContour(leftCnts)
                 rightcontour = findMostCommonContour(rightCnts)
+
                 #cv2.circle(left, leftcontour, radius=0, color=(0, 0, 255), thickness=-1)
-                cv2.drawContours(right, rightcontour, -1, (255, 0, 0), 3)
+                for i in range(0, len(rightcontour)):
+                    hull = cv2.convexHull(rightcontour[i])
+                    hullList.append(hull)
+                    #hull = cv2.convexHull(rightcontour[i])
+                    
+                
+                for i in range(0, len(rightcontour)):
+                    cv2.drawContours(right, hullList, i, (255, 0, 0))
+                    #cv2.drawContours(right, rightcontour, i, (0, 255, 0))
                 #cv2.drawContours(left, leftcontour, -1, (255, 0, 0), 3)
-                cv2.imshow('left',left)
+                cv2.imshow('left', left)
                 cv2.imshow('right', right)
                 #cv2.waitKey(0)
 
