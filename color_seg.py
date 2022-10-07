@@ -1,11 +1,14 @@
+import imp
 import cv2
 import numpy as np
 # from dense_optical_flow import *
 from sparse_of import SparseOF
-
+from scipy import ndimage
 from avgColor import avgColTresh
 from avgColorHSV import hsvTresh
 from collections import Counter
+from skimage.morphology import area_opening
+from skimage.morphology import area_closing
 
 
 def tomasiTacking(frame):
@@ -93,8 +96,8 @@ def getContourCoordinates(leftRegionIMG, rightRegionIMG):
     return largestCntL, largestCntR
 
 
-def findMostCommonContour(contourCoordinates):
-
+def findMostCommonContour(contourCoordinates, image):
+    kernelClose = np.ones((5, 5), np.uint8)
     coordsArray = []
     mostCommonCnt = []
 
@@ -111,15 +114,52 @@ def findMostCommonContour(contourCoordinates):
     counter = Counter(repeatedCoords)
 
     for coord in counter:
-        if counter[coord] > 30:
+        if counter[coord] > 50:
             #print(f'Coordinate: {coord}, Occurences: {counter[coord]}')
             mostCommonCnt.append(coord)
     
     mostCommonCnt = [np.asarray(mostCommonCnt)]
-    print(f'len: {len(mostCommonCnt)}')
-    print(f'len: {len(mostCommonCnt[0])}')
-    #print('mostCommonCnt:', mostCommonCnt)
-    #print(f'Most common x-coordinates and their occurences: \n {mstCommonCoords} \n and length of list: {len(mstCommonCoords)}')
+    #print(f'Most common coordinates and their occurences: \n {mstCommonCoords} \n and length of list: {len(mstCommonCoords)}')
+    mask = np.zeros_like(image)
+    
+   
+
+    for i in range(0, len(mostCommonCnt)):
+        hull = cv2.convexHull(mostCommonCnt[i])
+        hullList.append(hull)
+        #hull = cv2.convexHull(rightcontour[i])
+        
+        
+    for i in range(0, len(mostCommonCnt)):
+        #cv2.drawContours(image, hullList, i, (255, 0, 0))
+        cv2.drawContours(mask, mostCommonCnt, i, (255, 255, 255))
+    
+    mask = mask[:, :, 0]
+
+    out = np.zeros_like(image)
+    out[mask == 255] = image[mask == 255]
+
+    yI, xI = np.where(mask == 255)
+    
+
+    (topy, topx) = (np.min(yI), np.min(xI))
+    (bottomy, bottomx) = (np.max(yI), np.max(xI))
+    out = out[topy:bottomy+1, topx:bottomx+1]
+    out = out[:, :, 0]
+    yII, xII = np.where(out > 0)
+    out[yII, xII] = 255
+    
+    
+    
+    print('shape:', out.shape)
+    #out = cv2.morphologyEx(out, cv2.MORPH_OPEN, kernelClose, iterations=1)
+    cv2.imshow('out', out) 
+    cv2.waitKey(0)
+    
+    #cv2.drawContours(left, leftcontour, -1, (255, 0, 0), 3)
+    cv2.imshow('left', left)
+    cv2.imshow('right', right)
+
     return mostCommonCnt
 
 
@@ -215,22 +255,11 @@ if __name__ == '__main__':
                 # print(f'temp3[0][0]: {temp3[0][0]}')
                 # print(f'temp3[1][0]: {temp3[1][0]}')
                 # cv2.waitKey(0)
-                leftcontour = findMostCommonContour(leftCnts)
-                rightcontour = findMostCommonContour(rightCnts)
+                leftcontour = findMostCommonContour(leftCnts, left)
+                rightcontour = findMostCommonContour(rightCnts, right)
 
                 #cv2.circle(left, leftcontour, radius=0, color=(0, 0, 255), thickness=-1)
-                for i in range(0, len(rightcontour)):
-                    hull = cv2.convexHull(rightcontour[i])
-                    hullList.append(hull)
-                    #hull = cv2.convexHull(rightcontour[i])
-                    
                 
-                for i in range(0, len(rightcontour)):
-                    cv2.drawContours(right, hullList, i, (255, 0, 0))
-                    #cv2.drawContours(right, rightcontour, i, (0, 255, 0))
-                #cv2.drawContours(left, leftcontour, -1, (255, 0, 0), 3)
-                cv2.imshow('left', left)
-                cv2.imshow('right', right)
                 #cv2.waitKey(0)
 
             # leftHSVthresh = hsvTresh(left)
