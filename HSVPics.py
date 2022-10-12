@@ -13,26 +13,23 @@ import skimage
 import matplotlib.pyplot as plt
 
 
-image = cv2.imread('data/kop.png')
+image = cv2.imread('data/tuborgclas.png')
 hsv = cv2.cvtColor(image,cv2.COLOR_BGR2HSV)
 roi = hsv[100:600,0:1440]
-threshold = 15
-blur = cv2.medianBlur(roi,3)
 
-avgHue = np.average(blur[:,:,0])
-avgSat = np.average(blur[:, :, 1])
-avgVal = np.average(blur[:, :, 2])
+def treshAvgHsv(image, treshold):
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    blur = cv2.medianBlur(hsv,3)
+    avgHue = np.average(blur[:, :, 0])
+    avgHueHigh = avgHue + treshold
+    avgHueLow = avgHue - treshold
+    range = cv2.inRange(blur, (avgHueLow, 0, 0), (avgHueHigh, 255, 255))
+    threshImg = cv2.bitwise_not(range)
+    f = area_opening(threshImg, 300, 1)
+    return f
 
-avgHueHigh = avgHue + threshold
-avgSatHigh = avgSat + threshold
-avgValHigh = avgVal + threshold
-avgHueLow = avgHue - threshold
-avgSatLow = avgSat - threshold
-avgValLow = avgVal - threshold
+f = treshAvgHsv(image, 15)
 
-range = cv2.inRange(blur,(avgHueLow,0,0),(avgHueHigh,255,255))
-threshImg = cv2.bitwise_not(range)
-f = area_opening(threshImg, 300, 1)
 
 cv2.imshow('rekd',f)
 
