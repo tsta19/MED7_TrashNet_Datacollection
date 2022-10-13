@@ -121,8 +121,6 @@ def findMostCommonContour(contourCoordinates, image):
     mostCommonCnt = [np.asarray(mostCommonCnt)]
     #print(f'Most common coordinates and their occurences: \n {mstCommonCoords} \n and length of list: {len(mstCommonCoords)}')
     mask = np.zeros_like(image)
-    
-   
 
     for i in range(0, len(mostCommonCnt)):
         hull = cv2.convexHull(mostCommonCnt[i])
@@ -132,7 +130,7 @@ def findMostCommonContour(contourCoordinates, image):
         
     for i in range(0, len(mostCommonCnt)):
         #cv2.drawContours(image, hullList, i, (255, 0, 0))
-        cv2.drawContours(mask, mostCommonCnt, i, (255, 255, 255))
+        cv2.drawContours(mask, mostCommonCnt, i, (255, 255, 255), thickness=cv2.FILLED)
     
     mask = mask[:, :, 0]
 
@@ -154,13 +152,11 @@ def findMostCommonContour(contourCoordinates, image):
     print('shape:', out.shape)
     #out = cv2.morphologyEx(out, cv2.MORPH_OPEN, kernelClose, iterations=1)
     cv2.imshow('out', out) 
-    cv2.waitKey(0)
+    #cv2.waitKey(0)
     
     #cv2.drawContours(left, leftcontour, -1, (255, 0, 0), 3)
-    cv2.imshow('left', left)
-    cv2.imshow('right', right)
 
-    return mostCommonCnt
+    return mostCommonCnt, out, topy, topx, bottomy, bottomx
 
 
 def colorSeg(motionVar, prevFrame, currentFrame):
@@ -182,7 +178,7 @@ def colorSeg(motionVar, prevFrame, currentFrame):
     cv2.imshow('segf', segmentedFrame)
     contours, hierarchy = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    output = cv2.drawContours(segmentedFrame, contours, -1, (0, 200, 0), 1)
+    output = cv2.drawContours(segmentedFrame, contours, -1, (0, 200, 0), thickness=cv2.FILLED)
 
     # ROI visualization
     # start_point1 = (210, 210)
@@ -206,6 +202,42 @@ def colorSeg(motionVar, prevFrame, currentFrame):
 
     output = currentFrame
 
+def fillColor(image):
+    cntImg = np.zeros_like(image)
+    close = area_closing(image,100,1)
+    contours, hierachy = cv2.findContours(close, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    for i in range(0,len(contours)):
+        cv2.drawContours(cntImg, contours, i, (255,255,255),thickness=cv2.FILLED)
+    return cntImg
+
+def maskOff(inputImg,mask):
+    newImg1 = np.zeros((inputImg.shape[0], inputImg.shape[1], 3), np.uint8)
+    for y in range(inputImg.shape[0]):
+        for x in range(inputImg.shape[1]):
+            if mask[y][x] == 255:
+                newImg1[y][x] = inputImg[y][x]
+            else:
+                newImg1[y][x] = 0
+    return newImg1
+
+def templateMatch(Img, Template):
+    h = Template.shape[0]
+    w = Template.shape[1]
+    grayTemplate = cv2.cvtColor(Template, cv2.COLOR_BGR2GRAY)
+    templateResult = cv2.matchTemplate(Img, grayTemplate, cv2.TM_CCOEFF_NORMED)
+    (minVal, maxVal, minLoc, maxLoc) = cv2.minMaxLoc(templateResult)
+    topLeft = maxLoc
+    bottomRight = (topLeft[0] + w, topLeft[1] + h)
+    return topLeft, bottomRight, templateResult
+
+def makeTransparent(image):
+    tmp = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    _, alpha = cv2.threshold(tmp, 0, 255, cv2.THRESH_BINARY)
+    b, g, r = cv2.split(image)
+    rgba = [b, g, r, alpha]
+    dst = cv2.merge(rgba, 4)
+    cv2.imwrite('test.png',dst)
+    return dst
 
 if __name__ == '__main__':
     frameCount = 0
@@ -228,7 +260,8 @@ if __name__ == '__main__':
         cv2.imshow('current', frame)
         left, right = getROI(frame)
         prevLeft, prevRight = getROI(previousFrame)
-
+        grayLeft = cv2.cvtColor(left,cv2.COLOR_BGR2GRAY)
+        grayRight = cv2.cvtColor(right, cv2.COLOR_BGR2GRAY)
 
         if frameCount > 150:
             # colorSeg(motion, previousFrame, frame)
@@ -255,8 +288,34 @@ if __name__ == '__main__':
                 # print(f'temp3[0][0]: {temp3[0][0]}')
                 # print(f'temp3[1][0]: {temp3[1][0]}')
                 # cv2.waitKey(0)
-                leftcontour = findMostCommonContour(leftCnts, left)
-                rightcontour = findMostCommonContour(rightCnts, right)
+                leftcontour, leftout, leftYTop, leftXTop, leftYBottom, leftXBottom = findMostCommonContour(leftCnts, left)
+                rightcontour, rightout, rightYTop, rightXTop, rightYBottom, rightXBottom = findMostCommonContour(rightCnts, right)
+                roiLeft = left[leftYTop:leftYBottom+1, leftXTop:leftXBottom+1]
+                roiRight = right[rightYTop:rightYBottom + 1, rightXTop:rightXBottom + 1]
+
+
+                closed = fillColor(leftout)
+                closed2 = fillColor(rightout)
+                maskedLeft = maskOff(roiLeft,closed)
+                maskedRight = maskOff(roiRight, closed2)
+                transparentLeft = makeTransparent(maskedLeft)
+                transparentRight = makeTransparent(maskedRight)
+                topLeftL, bottomRightL, resultL = templateMatch(grayLeft,maskedLeft)
+                topLeftR, bottomRightR, resultR = templateMatch(grayRight,maskedRight)
+                cv2.rectangle(left,topLeftL,bottomRightL,(0,255,0),2)
+                cv2.rectangle(right, topLeftR, bottomRightR, (0, 255, 0), 2)
+                #cv2.imshow('tresh',closed)
+
+
+
+                #cv2.imshow('tresh2', closed2)
+                cv2.imshow('getMaskedLeft', maskedLeft)
+                cv2.imshow('getMaskedRight', maskedRight)
+                cv2.imshow('left', left)
+                cv2.imshow('right', right)
+                cv2.imshow('leftout', leftout)
+                cv2.imshow('rightout', rightout)
+                cv2.imshow('templatematch', resultL)
 
                 #cv2.circle(left, leftcontour, radius=0, color=(0, 0, 255), thickness=-1)
                 

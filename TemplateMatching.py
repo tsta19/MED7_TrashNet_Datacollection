@@ -35,6 +35,7 @@ while cap.isOpened():
 
     roi = frame[0:roiy, roix2:roix]
 
+
     gray = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)
     grayRoi = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
     grayTempLeft = cv2.cvtColor(template_left,cv2.COLOR_BGR2GRAY)
@@ -63,6 +64,7 @@ while cap.isOpened():
     if cv2.waitKey(1) == ('q'):
         break
     cv2.imshow('output', frame)
+    cv2.imshow('result',result_left)
 
 
 cap.release()
