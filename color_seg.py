@@ -34,7 +34,6 @@ def getROI(currentFrame):
 
     return leftRegionIMG, rightRegionIMG
 
-
 def getContourCoordinates(leftRegionIMG, rightRegionIMG):
     kernelClose = np.ones((5, 5), np.uint8)
     kernelErode = np.ones((1, 1), np.uint8)
@@ -95,12 +94,10 @@ def getContourCoordinates(leftRegionIMG, rightRegionIMG):
     # cv2.imshow('Rightcanny', rightCanny)
     return largestCntL, largestCntR
 
-
-def findMostCommonContour(contourCoordinates, image):
+def findMostCommonContour(contourCoordinates, image, val):
     kernelClose = np.ones((5, 5), np.uint8)
     coordsArray = []
     mostCommonCnt = []
-
 
     for i in range(0, len(contourCoordinates)):
         tempCnt = contourCoordinates[i]
@@ -109,12 +106,11 @@ def findMostCommonContour(contourCoordinates, image):
             # print(f'temp: {temp}')
             coordsArray.append(temp)
 
-
     repeatedCoords = tuple(map(tuple, coordsArray))
     counter = Counter(repeatedCoords)
 
     for coord in counter:
-        if counter[coord] > 50:
+        if counter[coord] > val:
             #print(f'Coordinate: {coord}, Occurences: {counter[coord]}')
             mostCommonCnt.append(coord)
     
@@ -186,7 +182,7 @@ def colorSeg(motionVar, prevFrame, currentFrame):
     # end_point1 = (330, 335)
     # end_point2 = (630, 335)
     # r_color = (255, 255, 255)
-    # cv2.rectangle(segmentedFrame, start_point1, end_point1, r_color, 6 )
+    # cv2.rectangle(segmentedFrame, start_point1, end_point1, r_color, 6)
     # cv2.rectangle(segmentedFrame, start_point2, end_point2, r_color, 6)
 
     for cnt in contours:
@@ -239,9 +235,23 @@ def makeTransparent(image):
     cv2.imwrite('test.png',dst)
     return dst
 
+def getHighestXY(counterArray):
+    maxValX = 0
+    maxValY = 0
+    npp = np.asarray(counterArray)
+    for i in range(npp.shape[1]):
+        if maxValX < counterArray[0][i][1]:
+            maxValX = counterArray[0][i][1]
+        if maxValY < counterArray[0][i][0]:
+            maxValY = counterArray[0][i][0]
+    return maxValY, maxValX
+
+
+
 if __name__ == '__main__':
     frameCount = 0
     calibrating = True
+    check = True
 
     cap = cv2.VideoCapture('data/outside_videos/outsidecalibratoin.mp4')
 
@@ -251,7 +261,20 @@ if __name__ == '__main__':
     leftCnts = []
     rightCnts = []
     hullList = []
-
+    contourVal = 50
+    # ---Optical Flow Parameters---#
+    lk_params = dict(winSize=(15, 15),
+                     maxLevel=2,
+                     criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03))
+    feature_params = dict(maxCorners=10,
+                          qualityLevel=0.6,
+                          minDistance=10,
+                          blockSize=7)
+    trajectory_len = 10
+    detect_interval = 5
+    trajectories = []
+    frame_idx = 0
+    # ---Optical Flow Parameters---#
     while cap.isOpened() and calibrating:
         previousFrame = frame[:]
         # cv2.imshow('prev', previousFrame)
@@ -262,6 +285,8 @@ if __name__ == '__main__':
         prevLeft, prevRight = getROI(previousFrame)
         grayLeft = cv2.cvtColor(left,cv2.COLOR_BGR2GRAY)
         grayRight = cv2.cvtColor(right, cv2.COLOR_BGR2GRAY)
+
+
 
         if frameCount > 150:
             # colorSeg(motion, previousFrame, frame)
@@ -288,10 +313,85 @@ if __name__ == '__main__':
                 # print(f'temp3[0][0]: {temp3[0][0]}')
                 # print(f'temp3[1][0]: {temp3[1][0]}')
                 # cv2.waitKey(0)
-                leftcontour, leftout, leftYTop, leftXTop, leftYBottom, leftXBottom = findMostCommonContour(leftCnts, left)
-                rightcontour, rightout, rightYTop, rightXTop, rightYBottom, rightXBottom = findMostCommonContour(rightCnts, right)
-                roiLeft = left[leftYTop:leftYBottom+1, leftXTop:leftXBottom+1]
+
+                leftcontour, leftout, leftYTop, leftXTop, leftYBottom, leftXBottom = findMostCommonContour(leftCnts,
+                                                                                                           left,
+                                                                                                           contourVal)
+                rightcontour, rightout, rightYTop, rightXTop, rightYBottom, rightXBottom = findMostCommonContour(
+                    rightCnts, right, contourVal)
+                roiLeft = left[leftYTop:leftYBottom + 1, leftXTop:leftXBottom + 1]
                 roiRight = right[rightYTop:rightYBottom + 1, rightXTop:rightXBottom + 1]
+
+                if check:
+                    leftcontour1, leftout1, leftYTop1, leftXTop1, leftYBottom1, leftXBottom1 = findMostCommonContour(leftCnts,
+                                                                                                               left,
+                                                                                                               contourVal)
+                    rightcontour1, rightout1, rightYTop1, rightXTop1, rightYBottom1, rightXBottom1 = findMostCommonContour(
+                        rightCnts, right, contourVal)
+                    check = False
+                roiLeft = left[leftYTop1:leftYBottom1 + 1, leftXTop1:leftXBottom1 + 1]
+                roiRight = right[rightYTop1:rightYBottom1 + 1, rightXTop:rightXBottom1 + 1]
+
+                #--- Optical Flow Code ---#
+
+                frame_gray = cv2.cvtColor(roiLeft, cv2.COLOR_BGR2GRAY)
+                img = roiLeft.copy()
+
+                # Calculate optical flow for a sparse feature set using the iterative Lucas-Kanade Method
+                if len(trajectories) > 0:
+                    img0, img1 = prev_gray, frame_gray
+                    p0 = np.float32([trajectory[-1] for trajectory in trajectories]).reshape(-1, 1, 2)
+                    p1, _st, _err = cv2.calcOpticalFlowPyrLK(img0, img1, p0, None, **lk_params)
+                    p0r, _st, _err = cv2.calcOpticalFlowPyrLK(img1, img0, p1, None, **lk_params)
+                    d = abs(p0 - p0r).reshape(-1, 2).max(-1)
+                    good = d < 1
+
+                    new_trajectories = []
+
+                    # Get all the trajectories
+                    for trajectory, (x, y), good_flag in zip(trajectories, p1.reshape(-1, 2), good):
+                        if not good_flag:
+                            continue
+                        trajectory.append((x, y))
+                        if len(trajectory) > trajectory_len:
+                            del trajectory[0]
+                        new_trajectories.append(trajectory)
+                        # Newest detected point
+                        cv2.circle(img, (int(x), int(y)), 2, (0, 0, 255), -1)
+
+                    trajectories = new_trajectories
+
+                    # Draw all the trajectories
+                    cv2.polylines(img, [np.int32(trajectory) for trajectory in trajectories], False, (0, 255, 0))
+
+
+                # Update interval - When to update and detect new features
+                if frame_idx % detect_interval == 0:
+                    mask = np.zeros_like(frame_gray)
+                    mask[:] = 255
+
+                    # Lastest point in latest trajectory
+                    for x, y in [np.int32(trajectory[-1]) for trajectory in trajectories]:
+                        cv2.circle(mask, (x, y), 5, 0, -1)
+
+                    # Detect the good features to track
+                    p = cv2.goodFeaturesToTrack(frame_gray, mask=mask, **feature_params)
+                    if p is not None:
+                        # If good features can be tracked - add that to the trajectories
+                        for x, y in np.float32(p).reshape(-1, 2):
+                            trajectories.append([(x, y)])
+
+                frame_idx += 1
+                prev_gray = frame_gray
+
+                # End time
+
+
+                # Show Results
+                cv2.imshow('Optical Flow', img)
+                cv2.imshow('Mask', mask)
+                #---Optical Flow Code---#
+
 
 
                 closed = fillColor(leftout)
