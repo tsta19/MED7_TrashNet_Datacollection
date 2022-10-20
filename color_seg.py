@@ -9,6 +9,8 @@ from avgColorHSV import hsvTresh
 from collections import Counter
 from skimage.morphology import area_opening
 from skimage.morphology import area_closing
+from skimage.measure import label, regionprops, regionprops_table
+import pandas as pd
 
 
 def tomasiTacking(frame):
@@ -49,10 +51,12 @@ def getContourCoordinates(leftRegionIMG, rightRegionIMG):
     blobsR[xR, yR] = 255
     blobsR = cv2.erode(blobsR, kernelErode)
 
+
     xL, yL = np.where(leftCanny < 1)
     blobsL = np.zeros_like(leftCanny)
     blobsL[xL, yL] = 255
-    blobsL = cv2.erode(blobsL, kernelErode)
+    blobsL1 = cv2.erode(blobsL, kernelErode)
+
 
     contoursR, hierarchy = cv2.findContours(blobsR, cv2.RETR_LIST, cv2.CHAIN_APPROX_TC89_KCOS)
     contoursL, hierarchy = cv2.findContours(blobsL, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
@@ -92,7 +96,7 @@ def getContourCoordinates(leftRegionIMG, rightRegionIMG):
 
     # cv2.imshow('Leftcanny', leftCanny)
     # cv2.imshow('Rightcanny', rightCanny)
-    return largestCntL, largestCntR
+    return largestCntL, largestCntR, blobsL
 
 def findMostCommonContour(contourCoordinates, image, val):
     kernelClose = np.ones((5, 5), np.uint8)
@@ -246,6 +250,39 @@ def getHighestXY(counterArray):
             maxValY = counterArray[0][i][0]
     return maxValY, maxValX
 
+def draw_flow(img, flow, step=16):
+
+    h, w = img.shape[:2]
+    y, x = np.mgrid[step/2:h:step, step/2:w:step].reshape(2,-1).astype(int)
+    fx, fy = flow[y,x].T
+
+    lines = np.vstack([x, y, x-fx, y-fy]).T.reshape(-1, 2, 2)
+    lines = np.int32(lines + 0.5)
+
+    img_bgr = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    cv2.polylines(img_bgr, lines, 0, (0, 255, 0))
+
+    for (x1, y1), (_x2, _y2) in lines:
+        cv2.circle(img_bgr, (x1, y1), 1, (0, 255, 0), -1)
+
+    return img_bgr
+
+
+def draw_hsv(flow):
+
+    h, w = flow.shape[:2]
+    fx, fy = flow[:,:,0], flow[:,:,1]
+
+    ang = np.arctan2(fy, fx) + np.pi
+    v = np.sqrt(fx*fx+fy*fy)
+
+    hsv = np.zeros((h, w, 3), np.uint8)
+    hsv[...,0] = ang*(180/np.pi/2)
+    hsv[...,1] = 255
+    hsv[...,2] = np.minimum(v*4, 255)
+    bgr = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+
+    return bgr
 
 
 if __name__ == '__main__':
@@ -262,19 +299,9 @@ if __name__ == '__main__':
     rightCnts = []
     hullList = []
     contourVal = 50
-    # ---Optical Flow Parameters---#
-    lk_params = dict(winSize=(15, 15),
-                     maxLevel=2,
-                     criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03))
-    feature_params = dict(maxCorners=10,
-                          qualityLevel=0.6,
-                          minDistance=10,
-                          blockSize=7)
-    trajectory_len = 10
-    detect_interval = 5
-    trajectories = []
-    frame_idx = 0
-    # ---Optical Flow Parameters---#
+    properties = ['area', 'bbox', 'bbox_area']
+    kernel1 = np.ones((5,5), np.uint8)
+
     while cap.isOpened() and calibrating:
         previousFrame = frame[:]
         # cv2.imshow('prev', previousFrame)
@@ -290,7 +317,7 @@ if __name__ == '__main__':
 
         if frameCount > 150:
             # colorSeg(motion, previousFrame, frame)
-            leftcnt, rightcnt = getContourCoordinates(left, right)
+            leftcnt, rightcnt, blobsL = getContourCoordinates(left, right)
             print(frameCount)
             #print(leftcnt)
             #cv2.waitKey(0)
@@ -314,13 +341,13 @@ if __name__ == '__main__':
                 # print(f'temp3[1][0]: {temp3[1][0]}')
                 # cv2.waitKey(0)
 
-                leftcontour, leftout, leftYTop, leftXTop, leftYBottom, leftXBottom = findMostCommonContour(leftCnts,
-                                                                                                           left,
-                                                                                                           contourVal)
-                rightcontour, rightout, rightYTop, rightXTop, rightYBottom, rightXBottom = findMostCommonContour(
-                    rightCnts, right, contourVal)
-                roiLeft = left[leftYTop:leftYBottom + 1, leftXTop:leftXBottom + 1]
-                roiRight = right[rightYTop:rightYBottom + 1, rightXTop:rightXBottom + 1]
+                #leftcontour, leftout, leftYTop, leftXTop, leftYBottom, leftXBottom = findMostCommonContour(leftCnts,
+                                                                                                           #left,
+                                                                                                           #contourVal)
+                #rightcontour, rightout, rightYTop, rightXTop, rightYBottom, rightXBottom = findMostCommonContour(
+                    #rightCnts, right, contourVal)
+                #roiLeft = left[leftYTop:leftYBottom + 1, leftXTop:leftXBottom + 1]
+                #roiRight = right[rightYTop:rightYBottom + 1, rightXTop:rightXBottom + 1]
 
                 if check:
                     leftcontour1, leftout1, leftYTop1, leftXTop1, leftYBottom1, leftXBottom1 = findMostCommonContour(leftCnts,
@@ -328,76 +355,48 @@ if __name__ == '__main__':
                                                                                                                contourVal)
                     rightcontour1, rightout1, rightYTop1, rightXTop1, rightYBottom1, rightXBottom1 = findMostCommonContour(
                         rightCnts, right, contourVal)
+                    prevRoiLeft = left[leftYTop1:leftYBottom1 + 1, leftXTop1:leftXBottom1 + 1]
+                    prevRoiLeftGray = cv2.cvtColor(prevRoiLeft,cv2.COLOR_BGR2GRAY)
+                    blobs = label(blobsL > 0)
+                    df = pd.DataFrame(regionprops_table(blobs, properties=properties))
+
+                    closed = fillColor(leftout1)
+                    closed2 = fillColor(rightout1)
+                    blobsLReal = blobsL[leftYTop1:leftYBottom1 + 1, leftXTop1:leftXBottom1 + 1]
+                    f = area_opening(blobsLReal, max(df['area'] - 200), 1)
+                    erodeF = cv2.erode(f, kernel1, iterations=3)
+                    maskedLeftPrev = maskOff(prevRoiLeft, erodeF)
+                    maskedLeftPrevGray = cv2.cvtColor(maskedLeftPrev, cv2.COLOR_BGR2GRAY)
+
                     check = False
+
+
+
+
                 roiLeft = left[leftYTop1:leftYBottom1 + 1, leftXTop1:leftXBottom1 + 1]
-                roiRight = right[rightYTop1:rightYBottom1 + 1, rightXTop:rightXBottom1 + 1]
-
-                #--- Optical Flow Code ---#
-
-                frame_gray = cv2.cvtColor(roiLeft, cv2.COLOR_BGR2GRAY)
-                img = roiLeft.copy()
-
-                # Calculate optical flow for a sparse feature set using the iterative Lucas-Kanade Method
-                if len(trajectories) > 0:
-                    img0, img1 = prev_gray, frame_gray
-                    p0 = np.float32([trajectory[-1] for trajectory in trajectories]).reshape(-1, 1, 2)
-                    p1, _st, _err = cv2.calcOpticalFlowPyrLK(img0, img1, p0, None, **lk_params)
-                    p0r, _st, _err = cv2.calcOpticalFlowPyrLK(img1, img0, p1, None, **lk_params)
-                    d = abs(p0 - p0r).reshape(-1, 2).max(-1)
-                    good = d < 1
-
-                    new_trajectories = []
-
-                    # Get all the trajectories
-                    for trajectory, (x, y), good_flag in zip(trajectories, p1.reshape(-1, 2), good):
-                        if not good_flag:
-                            continue
-                        trajectory.append((x, y))
-                        if len(trajectory) > trajectory_len:
-                            del trajectory[0]
-                        new_trajectories.append(trajectory)
-                        # Newest detected point
-                        cv2.circle(img, (int(x), int(y)), 2, (0, 0, 255), -1)
-
-                    trajectories = new_trajectories
-
-                    # Draw all the trajectories
-                    cv2.polylines(img, [np.int32(trajectory) for trajectory in trajectories], False, (0, 255, 0))
+                roiRight = right[rightYTop1:rightYBottom1 + 1, rightXTop1:rightXBottom1 + 1]
 
 
-                # Update interval - When to update and detect new features
-                if frame_idx % detect_interval == 0:
-                    mask = np.zeros_like(frame_gray)
-                    mask[:] = 255
-
-                    # Lastest point in latest trajectory
-                    for x, y in [np.int32(trajectory[-1]) for trajectory in trajectories]:
-                        cv2.circle(mask, (x, y), 5, 0, -1)
-
-                    # Detect the good features to track
-                    p = cv2.goodFeaturesToTrack(frame_gray, mask=mask, **feature_params)
-                    if p is not None:
-                        # If good features can be tracked - add that to the trajectories
-                        for x, y in np.float32(p).reshape(-1, 2):
-                            trajectories.append([(x, y)])
-
-                frame_idx += 1
-                prev_gray = frame_gray
-
-                # End time
-
-
-                # Show Results
-                cv2.imshow('Optical Flow', img)
-                cv2.imshow('Mask', mask)
-                #---Optical Flow Code---#
-
-
-
-                closed = fillColor(leftout)
-                closed2 = fillColor(rightout)
-                maskedLeft = maskOff(roiLeft,closed)
+                maskedLeft = maskOff(roiLeft, erodeF)
                 maskedRight = maskOff(roiRight, closed2)
+                maskedLeftGray = cv2.cvtColor(maskedLeft, cv2.COLOR_BGR2GRAY)
+
+
+                grayRoiLeft = cv2.cvtColor(roiLeft,cv2.COLOR_BGR2GRAY)
+                flow = cv2.calcOpticalFlowFarneback(maskedLeftPrevGray, maskedLeftGray, None, 0.5, 3, 25, 3, 5, 1.2, 0)
+                maskedLeftPrevGray = maskedLeftGray
+
+
+
+                flowHSV = draw_hsv(flow)
+
+                flowThresh = cv2.inRange(flowHSV, (0, 0, 15), (180, 255, 255))
+                blobsT = label(flowThresh > 0)
+                df2 = pd.DataFrame(regionprops_table(blobsT, properties=properties))
+                if len(df2) != 0 and max(df2['area']) > 300:
+                    print("closing!")
+
+
                 transparentLeft = makeTransparent(maskedLeft)
                 transparentRight = makeTransparent(maskedRight)
                 topLeftL, bottomRightL, resultL = templateMatch(grayLeft,maskedLeft)
@@ -408,14 +407,18 @@ if __name__ == '__main__':
 
 
 
+                cv2.imshow('hsvTresh', flowThresh)
                 #cv2.imshow('tresh2', closed2)
-                cv2.imshow('getMaskedLeft', maskedLeft)
-                cv2.imshow('getMaskedRight', maskedRight)
-                cv2.imshow('left', left)
-                cv2.imshow('right', right)
-                cv2.imshow('leftout', leftout)
-                cv2.imshow('rightout', rightout)
-                cv2.imshow('templatematch', resultL)
+                cv2.imshow('blobsL',f)
+                cv2.imshow('flow', draw_flow(maskedLeftGray, flow))
+                cv2.imshow('flow HSV', flowHSV)
+                #cv2.imshow('getMaskedLeft', maskedLeft)
+                #cv2.imshow('getMaskedRight', maskedRight)
+                #cv2.imshow('left', left)
+                #cv2.imshow('right', right)
+                #cv2.imshow('leftout', leftout)
+                #cv2.imshow('rightout', rightout)
+                #cv2.imshow('templatematch', resultL)
 
                 #cv2.circle(left, leftcontour, radius=0, color=(0, 0, 255), thickness=-1)
                 
