@@ -51,12 +51,10 @@ def getContourCoordinates(leftRegionIMG, rightRegionIMG):
     blobsR[xR, yR] = 255
     blobsR = cv2.erode(blobsR, kernelErode)
 
-
     xL, yL = np.where(leftCanny < 1)
     blobsL = np.zeros_like(leftCanny)
     blobsL[xL, yL] = 255
     blobsL1 = cv2.erode(blobsL, kernelErode)
-
 
     contoursR, hierarchy = cv2.findContours(blobsR, cv2.RETR_LIST, cv2.CHAIN_APPROX_TC89_KCOS)
     contoursL, hierarchy = cv2.findContours(blobsL, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
@@ -84,8 +82,8 @@ def getContourCoordinates(leftRegionIMG, rightRegionIMG):
     # print(f'test[1]: {test[1]}')
     # print(f'len: {len(largestCntR)}')
     # cv2.drawContours(rightRegionIMG, contours, -1, (0, 255, 0), 3)
-    #cv2.drawContours(rightRegionIMG, largestCntR, -1, (255, 0, 0), 3)
-    #cv2.drawContours(leftRegionIMG, largestCntL, -1, (255, 0, 0), 3)
+    # cv2.drawContours(rightRegionIMG, largestCntR, -1, (255, 0, 0), 3)
+    # cv2.drawContours(leftRegionIMG, largestCntL, -1, (255, 0, 0), 3)
 
     # cv2.imshow('blobL', blobsL)
     # cv2.imshow('blobR', blobsR)
@@ -147,15 +145,12 @@ def findMostCommonContour(contourCoordinates, image, val):
     yII, xII = np.where(out > 0)
     out[yII, xII] = 255
     
-    
-    
     print('shape:', out.shape)
     #out = cv2.morphologyEx(out, cv2.MORPH_OPEN, kernelClose, iterations=1)
     cv2.imshow('out', out) 
     #cv2.waitKey(0)
-    
-    #cv2.drawContours(left, leftcontour, -1, (255, 0, 0), 3)
 
+    #cv2.drawContours(left, leftcontour, -1, (255, 0, 0), 3)
     return mostCommonCnt, out, topy, topx, bottomy, bottomx
 
 
@@ -251,7 +246,6 @@ def getHighestXY(counterArray):
     return maxValY, maxValX
 
 def draw_flow(img, flow, step=16):
-
     h, w = img.shape[:2]
     y, x = np.mgrid[step/2:h:step, step/2:w:step].reshape(2,-1).astype(int)
     fx, fy = flow[y,x].T
@@ -269,7 +263,6 @@ def draw_flow(img, flow, step=16):
 
 
 def draw_hsv(flow):
-
     h, w = flow.shape[:2]
     fx, fy = flow[:,:,0], flow[:,:,1]
 
@@ -284,13 +277,12 @@ def draw_hsv(flow):
 
     return bgr
 
-
 if __name__ == '__main__':
     frameCount = 0
     calibrating = True
     check = True
 
-    cap = cv2.VideoCapture('data/outside_videos/outsidecalibratoin.mp4')
+    cap = cv2.VideoCapture('data/outside_videos/GL010030.MP4')
 
     ret, frame = cap.read()
     motion = 0
@@ -312,8 +304,6 @@ if __name__ == '__main__':
         prevLeft, prevRight = getROI(previousFrame)
         grayLeft = cv2.cvtColor(left,cv2.COLOR_BGR2GRAY)
         grayRight = cv2.cvtColor(right, cv2.COLOR_BGR2GRAY)
-
-
 
         if frameCount > 150:
             # colorSeg(motion, previousFrame, frame)
@@ -340,14 +330,6 @@ if __name__ == '__main__':
                 # print(f'temp3[0][0]: {temp3[0][0]}')
                 # print(f'temp3[1][0]: {temp3[1][0]}')
                 # cv2.waitKey(0)
-
-                #leftcontour, leftout, leftYTop, leftXTop, leftYBottom, leftXBottom = findMostCommonContour(leftCnts,
-                                                                                                           #left,
-                                                                                                           #contourVal)
-                #rightcontour, rightout, rightYTop, rightXTop, rightYBottom, rightXBottom = findMostCommonContour(
-                    #rightCnts, right, contourVal)
-                #roiLeft = left[leftYTop:leftYBottom + 1, leftXTop:leftXBottom + 1]
-                #roiRight = right[rightYTop:rightYBottom + 1, rightXTop:rightXBottom + 1]
 
                 if check:
                     leftcontour1, leftout1, leftYTop1, leftXTop1, leftYBottom1, leftXBottom1 = findMostCommonContour(leftCnts,
@@ -390,22 +372,17 @@ if __name__ == '__main__':
 
                 flowHSV = draw_hsv(flow)
 
-                flowThresh = cv2.inRange(flowHSV, (0, 0, 15), (180, 255, 255))
+                flowThresh = cv2.inRange(flowHSV, (0, 0, 5), (180, 255, 255))
                 blobsT = label(flowThresh > 0)
                 df2 = pd.DataFrame(regionprops_table(blobsT, properties=properties))
-                if len(df2) != 0 and max(df2['area']) > 300:
+                if len(df2) != 0 and max(df2['area']) > 350:
                     print("closing!")
 
-
-                transparentLeft = makeTransparent(maskedLeft)
-                transparentRight = makeTransparent(maskedRight)
                 topLeftL, bottomRightL, resultL = templateMatch(grayLeft,maskedLeft)
                 topLeftR, bottomRightR, resultR = templateMatch(grayRight,maskedRight)
                 cv2.rectangle(left,topLeftL,bottomRightL,(0,255,0),2)
                 cv2.rectangle(right, topLeftR, bottomRightR, (0, 255, 0), 2)
                 #cv2.imshow('tresh',closed)
-
-
 
                 cv2.imshow('hsvTresh', flowThresh)
                 #cv2.imshow('tresh2', closed2)
