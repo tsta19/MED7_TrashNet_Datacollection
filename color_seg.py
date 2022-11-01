@@ -6,6 +6,8 @@ from skimage.morphology import area_opening
 from skimage.morphology import area_closing
 from skimage.measure import label, regionprops_table
 import pandas as pd
+import pixellib
+from pixellib.torchbackend.instance import instanceSegmentation
 
 
 
@@ -177,6 +179,9 @@ if __name__ == '__main__':
     yo = False
     imNum = 0
     fiftyFrame = []
+
+    ins = instanceSegmentation()
+    ins.load_model("pointrend_resnet50.pkl", confidence=0.2)
 #---VARIABLES---#
     while cap.isOpened() and calibrating:
         previousFrame = frame[:]
@@ -211,6 +216,9 @@ if __name__ == '__main__':
                         rightCnts, right, contourVal)
                     # Making ROI's for the left grabber.
                     prevRoiLeft = left[leftYTop1:leftYBottom1 + 1, leftXTop1:leftXBottom1 + 1]
+
+                    print("top coordinates: " + str(leftYTop1) + " " + str(leftXBottom1))
+                    print("bottom coordinates: " + str(rightYBottom1) + " " + str(rightXTop1 + (frame.shape[1]/2)))
                     # label is sklearns function for doing blob analysis of a binary image
                     blobs = label(blobsL > 0)
                     # Using pandas to make a dataframe of the data to make it more easily accessable
@@ -282,7 +290,9 @@ if __name__ == '__main__':
                         # Save image from 150 frames ago as picture of garbage.
                         if len(fiftyFrame) > 150:
                             saveImg = fiftyFrame[frameCount-150]
-                        cv2.imwrite("data/savedimages/garbage" + str(imNum) + ".png",saveImg)
+                            saveImgRoi = saveImg[0:saveImg.shape[0],leftXBottom1:int(rightXTop1 + (saveImg.shape[1]/2))]
+                        cv2.imwrite("data/savedimages/garbage" + str(imNum) + ".png",saveImgRoi)
+                        ins.segmentImage("data/savedimages/garbage" + str(imNum) + ".png", show_bboxes=True,output_image_name="data/savedimages/segmented" + str(imNum) + ".png")
                         imNum += 1
                         movement = True
                 # If correct detection happens, start a timer that resets everytime a detection happens after the first one,
