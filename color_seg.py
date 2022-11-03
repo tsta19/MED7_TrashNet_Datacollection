@@ -160,7 +160,7 @@ if __name__ == '__main__':
     frameCount = 0
     calibrating = True
     check = True
-    cap = cv2.VideoCapture('data/outside_videos/GL010030.MP4')
+    cap = cv2.VideoCapture('data/outside_videos/GL010031.MP4')
     ret, frame = cap.read()
     motion = 0
     sparseOF = SparseOF()
@@ -179,6 +179,7 @@ if __name__ == '__main__':
     yo = False
     imNum = 0
     fiftyFrame = []
+    minBoundingVal = 1000
 
     ins = instanceSegmentation()
     ins.load_model("pointrend_resnet50.pkl", confidence=0.2)
@@ -292,7 +293,18 @@ if __name__ == '__main__':
                             saveImg = fiftyFrame[frameCount-150]
                             saveImgRoi = saveImg[0:saveImg.shape[0],leftXBottom1:int(rightXTop1 + (saveImg.shape[1]/2))]
                         cv2.imwrite("data/savedimages/garbage" + str(imNum) + ".png",saveImgRoi)
-                        ins.segmentImage("data/savedimages/garbage" + str(imNum) + ".png", show_bboxes=True,output_image_name="data/savedimages/segmented" + str(imNum) + ".png")
+                        results, output = ins.segmentImage("data/savedimages/garbage" + str(imNum) + ".png", show_bboxes=True,output_image_name="data/savedimages/segmented" + str(imNum) + ".png")
+                        for i in range(0, len(results['boxes'])):
+                            if abs(((saveImgRoi.shape[0]/2)-80) - (results['boxes'][i][3]-((results['boxes'][i][3]-results['boxes'][i][1])/2))) < minBoundingVal:
+                                minBoundingVal = abs(((saveImgRoi.shape[0]/2)-80) - (results['boxes'][i][3]-((results['boxes'][i][3]-results['boxes'][i][1])/2)))
+                                print("val: " +  str(minBoundingVal))
+                                bbx1 = results['boxes'][i][0]
+                                bby1 = results['boxes'][i][1]
+                                bbx2 = results['boxes'][i][2]
+                                bby2 = results['boxes'][i][3]
+                        cv2.rectangle(saveImgRoi,(bbx1,bby1),(bbx2,bby2),(0,255,0),thickness=2)
+                        cv2.imwrite("data/savedimages/bbox" + str(imNum) + ".png", saveImgRoi)
+                        minBoundingVal = 1000
                         imNum += 1
                         movement = True
                 # If correct detection happens, start a timer that resets everytime a detection happens after the first one,
