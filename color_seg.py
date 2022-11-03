@@ -160,7 +160,7 @@ if __name__ == '__main__':
     frameCount = 0
     calibrating = True
     check = True
-    cap = cv2.VideoCapture('data/outside_videos/GL010031.MP4')
+    cap = cv2.VideoCapture('data/outside_videos/GL010030.MP4')
     ret, frame = cap.read()
     motion = 0
     sparseOF = SparseOF()
@@ -180,6 +180,7 @@ if __name__ == '__main__':
     imNum = 0
     fiftyFrame = []
     minBoundingVal = 1000
+
 
     ins = instanceSegmentation()
     ins.load_model("pointrend_resnet50.pkl", confidence=0.2)
@@ -287,23 +288,31 @@ if __name__ == '__main__':
                         closing = False
                         closeCounter = 0
                         closeTimer = 0
+                        screenVal = frame.shape[0]/2
                         print("We closing!")
-                        # Save image from 150 frames ago as picture of garbage.
+                        # Save image from 150 frames ago as picture of garbage. Makes ROI of the image, to filter out unnecessary noise.
                         if len(fiftyFrame) > 150:
                             saveImg = fiftyFrame[frameCount-150]
                             saveImgRoi = saveImg[0:saveImg.shape[0],leftXBottom1:int(rightXTop1 + (saveImg.shape[1]/2))]
+                            # Save the chosen image on the pc.
                         cv2.imwrite("data/savedimages/garbage" + str(imNum) + ".png",saveImgRoi)
+                        # The code line for the neural network segmentation of the image.
                         results, output = ins.segmentImage("data/savedimages/garbage" + str(imNum) + ".png", show_bboxes=True,output_image_name="data/savedimages/segmented" + str(imNum) + ".png")
+                        # Goes through all the bounding boxes that is found by the NN on the image and chooses the one closest to the grabbers position.
                         for i in range(0, len(results['boxes'])):
-                            if abs(((saveImgRoi.shape[0]/2)-80) - (results['boxes'][i][3]-((results['boxes'][i][3]-results['boxes'][i][1])/2))) < minBoundingVal:
-                                minBoundingVal = abs(((saveImgRoi.shape[0]/2)-80) - (results['boxes'][i][3]-((results['boxes'][i][3]-results['boxes'][i][1])/2)))
+                            middleObject = results['boxes'][i][3]-(results['boxes'][i][3]-results['boxes'][i][1])/2
+                            if abs((screenVal-80) - (results['boxes'][i][3]-middleObject)) < minBoundingVal:
+                                minBoundingVal = abs((screenVal-80) - (results['boxes'][i][3]-middleObject))
                                 print("val: " +  str(minBoundingVal))
+                                print(imNum)
                                 bbx1 = results['boxes'][i][0]
                                 bby1 = results['boxes'][i][1]
                                 bbx2 = results['boxes'][i][2]
                                 bby2 = results['boxes'][i][3]
+                        # Draws the chosen bounding box on a new image and saves it on the pc.
                         cv2.rectangle(saveImgRoi,(bbx1,bby1),(bbx2,bby2),(0,255,0),thickness=2)
                         cv2.imwrite("data/savedimages/bbox" + str(imNum) + ".png", saveImgRoi)
+                        # Resets the minBoundingVal variable so it is ready for a new image segmentation. Also sets movement to tru to start the timer.
                         minBoundingVal = 1000
                         imNum += 1
                         movement = True
@@ -323,7 +332,7 @@ if __name__ == '__main__':
 
 
 
-
+                # shows the images, maybe delete some of these
                 cv2.imshow('hsvTresh', flowThresh)
                 #cv2.imshow('tresh2', closed2)
                 cv2.imshow('blobsL',f)
