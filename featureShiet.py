@@ -162,7 +162,7 @@ if __name__ == '__main__':
     frameCount = 0
     calibrating = True
     check = True
-    cap = cv2.VideoCapture('data/outside_videos/GL010030.MP4')
+    cap = cv2.VideoCapture('data/outside_videos/GL010031.MP4')
     ret, frame = cap.read()
     motion = 0
     sparseOF = SparseOF()
@@ -256,6 +256,7 @@ if __name__ == '__main__':
                 # optical flow function
                 roiLeft = left[leftYTop1:leftYBottom1 + 1, leftXTop1:leftXBottom1 + 1]
                 roiRight = right[rightYTop1:rightYBottom1 + 1, rightXTop1:rightXBottom1 + 1]
+                # More Roi's!! using these for feature extraction. Appending every frame roi into an array for later use.
                 grayFrameRoi = grayFrame[0:grayFrame.shape[0]-180, leftXBottom1:int(rightXTop1 + (grayFrame.shape[1] / 2))]
                 normalFrameRoi = frame[0:grayFrame.shape[0]-180, leftXBottom1:int(rightXTop1 + (grayFrame.shape[1] / 2))]
                 normalnormalPicss = frame[0:grayFrame.shape[0], leftXBottom1:int(rightXTop1 + (grayFrame.shape[1] / 2))]
@@ -308,39 +309,39 @@ if __name__ == '__main__':
 
                         # Save image from 150 frames ago as picture of garbage. Makes ROI of the image, to filter out unnecessary noise.
                         if len(fiftyFrame) > 70:
-
+                            # In this feature extract version we use this as the image to do feature extraction from.
                             saveImg = fiftyFrame[frameCount-30]
-
+                            # Make ROI, convert to gray.
                             saveImgRoi = saveImg[0:saveImg.shape[0],leftXBottom1:int(rightXTop1 + (saveImg.shape[1] / 2))]
                             saveImgRoiGray= cv2.cvtColor(saveImgRoi,cv2.COLOR_BGR2GRAY)
+                            # Append last 200 images into first in an array with gray images, and an array with normal images. Only begin
+                            # from th last 50th frame.The reason i minus framecount with 700, is because we only start appending images at 500 framecount.
                             for i in range(frameCount-700,len(grayFrameArray)-50):
                                 featureImgs.append(grayFrameArray[i])
                                 normalPics.append(normalPics[i])
-
+                            # Do feature extraction on each image in array.
                             for i in featureImgs:
-
+                            # Feature extract code, idk how it finds its matches. Just know that it outputs "good matches".
                                 detector = cv2.SIFT.create(0)
                                 keypoints1, descriptors1 = detector.detectAndCompute(saveImgRoiGray, None)
                                 keypoints2, descriptors2 = detector.detectAndCompute(i, None)
 
                                 matcher = cv2.DescriptorMatcher_create(cv2.DescriptorMatcher_FLANNBASED)
                                 knn_matches = matcher.knnMatch(descriptors1, descriptors2, 2)
+                                # Treshold for when it is a good match.
                                 ratio_thresh = 0.9
                                 good_matches = []
                                 for m, n in knn_matches:
                                     if m.distance < ratio_thresh * n.distance:
                                         good_matches.append(m)
+                                # This code takes the image with the most good matches and saves it as our image to work with.
                                 if len(good_matches) > goodMatchesCounter:
                                     goodMatchesCounter = len(good_matches)
-                                    #print(len(good_matches))
                                     realImg = normalnormalPics[(frameCount-701) + anotherCounter]
-                                    print(anotherCounter)
-                                    print(len(good_matches))
                                     good_matches.clear()
                                 knn_matches = 0
-                                #print(len(good_matches))
                                 anotherCounter += 1
-
+                            # Just resetting some variables.
                             goodMatchesCounter = 0
                             anotherCounter = 0
                             featureImgs.clear()
