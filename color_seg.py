@@ -160,7 +160,7 @@ if __name__ == '__main__':
     frameCount = 0
     calibrating = True
     check = True
-    cap = cv2.VideoCapture('data/outside_videos/GL010030.MP4')
+    cap = cv2.VideoCapture('data/outside_videos/GL010031.MP4')
     ret, frame = cap.read()
     motion = 0
     sparseOF = SparseOF()
@@ -271,6 +271,7 @@ if __name__ == '__main__':
                 if len(df2) != 0 and max(df2['area']) > 400:
                     closing = True
                     closeCounter += 1
+                    print(closeCounter)
 
 
                 # A bunch of if statements that checks whether we got a fake closing detection or not
@@ -278,21 +279,21 @@ if __name__ == '__main__':
                     closeTimer += 1
                     movementTimer = 0
                     # if it only makes 2 or less detection from the first detection after 10 frames, save as false detection. Also resets detection variables
-                    if closeTimer > 10 and closeCounter <= 2 and stillClosedBool == False:
+                    if closeTimer > 10 and closeCounter <= 3 and stillClosedBool == False:
                         closing = False
                         closeCounter = 0
                         closeTimer = 0
                         print("fake close")
                     # If it makes 3 or more detection in the last 10 frames from the first detection save as correct detection. Also resets detection variables
-                    if closeTimer > 10 and closeCounter > 2 and stillClosedBool == False:
+                    if closeTimer > 10 and closeCounter > 3 and stillClosedBool == False:
                         closing = False
                         closeCounter = 0
                         closeTimer = 0
                         screenVal = frame.shape[0]/2
                         print("We closing!")
                         # Save image from 150 frames ago as picture of garbage. Makes ROI of the image, to filter out unnecessary noise.
-                        if len(fiftyFrame) > 150:
-                            saveImg = fiftyFrame[frameCount-150]
+                        if len(fiftyFrame) > 120:
+                            saveImg = fiftyFrame[frameCount-120]
                             saveImgRoi = saveImg[0:saveImg.shape[0],leftXBottom1:int(rightXTop1 + (saveImg.shape[1]/2))]
                             # Save the chosen image on the pc.
                         cv2.imwrite("data/savedimages/garbage" + str(imNum) + ".png",saveImgRoi)
@@ -323,7 +324,8 @@ if __name__ == '__main__':
                     stillClosedBool = True
                     movementTimer += 1
                 # if the timer goes over 100 the grabbers have closed and we can start detecting for movement again.
-                if movementTimer > 100:
+                if movementTimer > 80:
+                    closeCounter = 0
                     movement = False
                     stillClosedBool = False
 
