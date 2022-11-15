@@ -13,8 +13,7 @@ from pixellib.torchbackend.instance import instanceSegmentation
 
 def getROI(currentFrame):
     leftRegionIMG = currentFrame[int(currentFrame.shape[0] / 2):currentFrame.shape[0], 0:int(currentFrame.shape[1] / 2)]
-    rightRegionIMG = currentFrame[int(currentFrame.shape[0] / 2): currentFrame.shape[0],
-                     int(currentFrame.shape[1] / 2):currentFrame.shape[1]]
+    rightRegionIMG = currentFrame[int(currentFrame.shape[0] / 2): currentFrame.shape[0], int(currentFrame.shape[1] / 2):currentFrame.shape[1]]
 
     return leftRegionIMG, rightRegionIMG
 
@@ -31,7 +30,7 @@ def getContourCoordinates(leftRegionIMG, rightRegionIMG):
     xR, yR = np.where(rightCanny < 1)
     blobsR = np.zeros_like(rightCanny)
     blobsR[xR, yR] = 255
-    blobsR = cv2.erode(blobsR, kernelErode)
+    #blobsR = cv2.erode(blobsR, kernelErode)
 
     xL, yL = np.where(leftCanny < 1)
     blobsL = np.zeros_like(leftCanny)
@@ -56,7 +55,7 @@ def getContourCoordinates(leftRegionIMG, rightRegionIMG):
         largestCntL = contoursL[0]
 
 
-    return largestCntL, largestCntR, blobsL
+    return largestCntL, largestCntR, blobsL, blobsR
 
 def findMostCommonContour(contourCoordinates, image, val):
     coordsArray = []
@@ -160,14 +159,14 @@ if __name__ == '__main__':
     frameCount = 0
     calibrating = True
     check = True
-    cap = cv2.VideoCapture('data/outside_videos/GL010030.MP4')
+    cap = cv2.VideoCapture('data/outside_videos/GL010033.MP4')
     ret, frame = cap.read()
     motion = 0
     sparseOF = SparseOF()
     leftCnts = []
     rightCnts = []
     hullList = []
-    contourVal = 50
+    contourVal = 80
     properties = ['area', 'bbox', 'bbox_area']
     kernel1 = np.ones((5,5), np.uint8)
     closing = False
@@ -179,7 +178,7 @@ if __name__ == '__main__':
     yo = False
     imNum = 0
     fiftyFrame = []
-    minBoundingVal = 1000
+    minBoundingVal = 0
 
 
     ins = instanceSegmentation()
@@ -199,7 +198,7 @@ if __name__ == '__main__':
 
         if frameCount > 150:
             # colorSeg(motion, previousFrame, frame)
-            leftcnt, rightcnt, blobsL = getContourCoordinates(left, right)
+            leftcnt, rightcnt, blobsL, blobsR = getContourCoordinates(left, right)
             print(frameCount)
             #print(leftcnt)
             #cv2.waitKey(0)
@@ -218,27 +217,38 @@ if __name__ == '__main__':
                         rightCnts, right, contourVal)
                     # Making ROI's for the left grabber.
                     prevRoiLeft = left[leftYTop1:leftYBottom1 + 1, leftXTop1:leftXBottom1 + 1]
+                    prevRoiRight = right[rightYTop1:rightYBottom1 + 1, rightYTop1:rightYBottom1 + 1]
+
 
                     print("top coordinates: " + str(leftYTop1) + " " + str(leftXBottom1))
                     print("bottom coordinates: " + str(rightYBottom1) + " " + str(rightXTop1 + (frame.shape[1]/2)))
                     # label is sklearns function for doing blob analysis of a binary image
                     blobs = label(blobsL > 0)
+                    blobs1 = label(blobsR > 0)
+
                     # Using pandas to make a dataframe of the data to make it more easily accessable
                     df = pd.DataFrame(regionprops_table(blobs, properties=properties))
+                    dfR = pd.DataFrame(regionprops_table(blobs1, properties=properties))
                     # Fills out both the grabber images as before this, there is a lot of holes in the image. Do it for both grabbers
                     closed = fillColor(leftout1)
                     closed2 = fillColor(rightout1)
                     # Fixes the ROI for the blobsL image, so it is the same size as the ones before, where we also made ROI's
                     blobsLReal = blobsL[leftYTop1:leftYBottom1 + 1, leftXTop1:leftXBottom1 + 1]
+                    blobsRReal = blobsR[rightYTop1:rightYBottom1 + 1, rightYTop1:rightYBottom1 + 1]
                     # Area_opening is sklearns function for removing any unwanted blobs. Here we say all blobs under the threshold value of 200 less than the
                     # biggest blob in the image should be removed, so we are only left with the biggest blob which should be the grabber.
                     f = area_opening(blobsLReal, max(df['area'] - 200), 1)
+                    f2 = area_opening(blobsRReal, max(dfR['area'] - 200), 1)
                     # Erode makes the threshold image smaller
                     erodeF = cv2.erode(f, kernel1, iterations=3)
+                    erodeF2 = cv2.erode(f2, kernel1, iterations=3)
+
                     # maskOff function, uses the binary image of the grabber to make a new image, where only the white parts of the binary image
                     # is saved from the prevRoiLeft image.
+                    maskedRightPrev = maskOff(prevRoiRight, erodeF2)
                     maskedLeftPrev = maskOff(prevRoiLeft, erodeF)
                     # make a gray version, as this is needed for the optical flow function.
+                    maskedRightPrevGray = cv2.cvtColor(maskedRightPrev, cv2.COLOR_BGR2GRAY)
                     maskedLeftPrevGray = cv2.cvtColor(maskedLeftPrev, cv2.COLOR_BGR2GRAY)
 
                     check = False
@@ -246,29 +256,37 @@ if __name__ == '__main__':
                 # Making ROI's again, this time in the while loop so it keeps updating, and not just doing it onee as once again, we need it for the
                 # optical flow function
                 roiLeft = left[leftYTop1:leftYBottom1 + 1, leftXTop1:leftXBottom1 + 1]
-                roiRight = right[rightYTop1:rightYBottom1 + 1, rightXTop1:rightXBottom1 + 1]
+                roiRight = right[rightYTop1:rightYBottom1, rightXTop1:rightXBottom1]
 
                 # New maskoff, only difference is this is agai in the while loop, so it keeps updating.
                 maskedLeft = maskOff(roiLeft, erodeF)
+                maskedRight = maskOff(roiRight, erodeF2)
                 # Gray version again, needed for optical flow
+                maskedRightGray = cv2.cvtColor(maskedRight, cv2.COLOR_BGR2GRAY)
                 maskedLeftGray = cv2.cvtColor(maskedLeft, cv2.COLOR_BGR2GRAY)
 
                 # The optical flow function! Uses gray images of the current frame and the frame from just before
                 # Idk how the f it works. You can watch this video and still not understand it: https://www.youtube.com/watch?v=WrlH5hHv0gE&ab_channel=NicolaiNielsen-ComputerVision%26AI
                 flow = cv2.calcOpticalFlowFarneback(maskedLeftPrevGray, maskedLeftGray, None, 0.5, 3, 25, 3, 5, 1.2, 0)
+                flow2 = cv2.calcOpticalFlowFarneback(maskedRightPrevGray, maskedRightGray, None, 0.5, 3, 25, 3, 5, 1.2, 0)
                 # Sets the previous frame to the current so it is ready for the next frame.
                 maskedLeftPrevGray = maskedLeftGray
+                maskedRightPrevGray = maskedRightGray
 
                 # Makes the hsv representation of the optical flow.
                 flowHSV = draw_hsv(flow)
+                flowHSVRight = draw_hsv(flow2)
 
                 # Makes binary image of the hsv image of the optical flow
                 flowThresh = cv2.inRange(flowHSV, (0, 0, 5), (180, 255, 255))
+                flowThreshRight = cv2.inRange(flowHSVRight, (0, 0, 5), (180, 255, 255))
                 # Blob analysis again to find the biggest blob
                 blobsT = label(flowThresh > 0)
-                df2 = pd.DataFrame(regionprops_table(blobsT, properties=properties))
+                blobsRight = label(flowThreshRight > 0)
+                dfLeft = pd.DataFrame(regionprops_table(blobsT, properties=properties))
+                dfRight = pd.DataFrame(regionprops_table(blobsRight, properties=properties))
                 # If the biggest blob is over 400, the grabbers are moving!!
-                if len(df2) != 0 and max(df2['area']) > 400:
+                if len(dfRight) != 0 and max(dfRight['area']) > 400:
                     closing = True
                     closeCounter += 1
                     print(closeCounter)
@@ -289,21 +307,27 @@ if __name__ == '__main__':
                         closing = False
                         closeCounter = 0
                         closeTimer = 0
-                        screenVal = frame.shape[0]/2
+                        screenVal = 250/2
                         print("We closing!")
                         # Save image from 150 frames ago as picture of garbage. Makes ROI of the image, to filter out unnecessary noise.
-                        if len(fiftyFrame) > 200:
-                            saveImg = fiftyFrame[frameCount-200]
+                        if len(fiftyFrame) > 70:
+                            saveImg = fiftyFrame[frameCount-70]
                             saveImgRoi = saveImg[0:saveImg.shape[0],leftXBottom1:int(rightXTop1 + (saveImg.shape[1]/2))]
+                            resize = cv2.resize(saveImgRoi,(250,250))
                             # Save the chosen image on the pc.
-                        cv2.imwrite("data/savedimages/garbage" + str(imNum) + ".png",saveImgRoi)
+                        cv2.imwrite("data/savedimages/garbage" + str(imNum) + ".png",resize)
                         # The code line for the neural network segmentation of the image.
                         results, output = ins.segmentImage("data/savedimages/garbage" + str(imNum) + ".png", show_bboxes=True,output_image_name="data/savedimages/segmented" + str(imNum) + ".png")
                         # Goes through all the bounding boxes that is found by the NN on the image and chooses the one closest to the grabbers position.
                         for i in range(0, len(results['boxes'])):
                             middleObject = results['boxes'][i][3]-(results['boxes'][i][3]-results['boxes'][i][1])/2
-                            if abs((screenVal-80) - (results['boxes'][i][3]-middleObject)) < minBoundingVal:
-                                minBoundingVal = abs((screenVal-80) - (results['boxes'][i][3]-middleObject))
+                            boxWidth = results['boxes'][i][2] - results['boxes'][i][0]
+                            boxHeight = results['boxes'][i][3] - results['boxes'][i][1]
+                            boxArea = boxWidth * boxHeight
+                            #if abs((screenVal-30) - (results['boxes'][i][3]-middleObject)) < minBoundingVal:
+                            if boxArea > minBoundingVal:
+                                #minBoundingVal = abs((screenVal-80) - (results['boxes'][i][3]-middleObject))
+                                minBoundingVal = boxArea
                                 print("val: " +  str(minBoundingVal))
                                 print(imNum)
                                 bbx1 = results['boxes'][i][0]
@@ -311,10 +335,23 @@ if __name__ == '__main__':
                                 bbx2 = results['boxes'][i][2]
                                 bby2 = results['boxes'][i][3]
                         # Draws the chosen bounding box on a new image and saves it on the pc.
-                        cv2.rectangle(saveImgRoi,(bbx1,bby1),(bbx2,bby2),(0,255,0),thickness=2)
-                        cv2.imwrite("data/savedimages/bbox" + str(imNum) + ".png", saveImgRoi)
+                        # Variables we need to train YoloV5 with custom dataset.
+                        centerX = (bbx1 + bbx2)/2
+                        centerY = (bby1 + bby2)/2
+                        width = bbx2 - bbx1
+                        height = bby2 - bby1
+                        ncenterX = centerX/resize.shape[1]
+                        ncenterY = centerY/resize.shape[0]
+                        nwidth = width/resize.shape[1]
+                        nheight = height/resize.shape[0]
+
+                        cv2.rectangle(resize,(bbx1,bby1),(bbx2,bby2),(0,255,0),thickness=2)
+                        cv2.imwrite("data/savedimages/bbox" + str(imNum) + ".png", resize)
+                        f1 = open("data/yolo/" + str(imNum)+".txt","w+")
+                        f1.write("Class here " + str(ncenterX) + " " + str(ncenterY) + " " + str(nwidth) + " " + str(nheight))
+                        f1.close()
                         # Resets the minBoundingVal variable so it is ready for a new image segmentation. Also sets movement to tru to start the timer.
-                        minBoundingVal = 1000
+                        minBoundingVal = 0
                         imNum += 1
                         movement = True
                 # If correct detection happens, start a timer that resets everytime a detection happens after the first one,
@@ -336,8 +373,10 @@ if __name__ == '__main__':
 
                 # shows the images, maybe delete some of these
                 cv2.imshow('hsvTresh', flowThresh)
+                cv2.imshow('hsvtreshRight', flowThreshRight)
+                cv2.imshow('righterode', f2)
                 #cv2.imshow('tresh2', closed2)
-                cv2.imshow('blobsL',f)
+                #cv2.imshow('blobsL',f)
                 cv2.imshow('flow', draw_flow(maskedLeftGray, flow))
                 cv2.imshow('flow HSV', flowHSV)
                 #cv2.imshow('getMaskedLeft', maskedLeft)

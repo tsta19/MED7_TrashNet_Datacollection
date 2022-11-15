@@ -6,7 +6,6 @@ from skimage.morphology import area_opening
 from skimage.morphology import area_closing
 from skimage.measure import label, regionprops_table
 import pandas as pd
-import pixellib
 from pixellib.torchbackend.instance import instanceSegmentation
 
 
@@ -164,7 +163,6 @@ if __name__ == '__main__':
     check = True
     cap = cv2.VideoCapture('data/outside_videos/GL010031.MP4')
     ret, frame = cap.read()
-    motion = 0
     sparseOF = SparseOF()
     leftCnts = []
     rightCnts = []
@@ -178,7 +176,6 @@ if __name__ == '__main__':
     movement = False
     movementTimer = 0
     stillClosedBool = False
-    yo = False
     imNum = 0
     fiftyFrame = []
     minBoundingVal = 1000
@@ -187,14 +184,16 @@ if __name__ == '__main__':
     grayFrameArray = []
     normalPics = []
     normalnormalPics = []
-    anotherCounter = 0
+    imgCounter = 0
+    # ---VARIABLES---#
 
+    # Load model used for image segmentation
     ins = instanceSegmentation()
     ins.load_model("pointrend_resnet50.pkl", confidence=0.2)
-    # ---VARIABLES---#
+
+
     while cap.isOpened() and calibrating:
         previousFrame = frame[:]
-        # cv2.imshow('prev', previousFrame)
         frameCount += 1
         ret, frame = cap.read()
         cv2.imshow('current', frame)
@@ -227,9 +226,6 @@ if __name__ == '__main__':
                         rightCnts, right, contourVal)
                     # Making ROI's for the left grabber.
                     prevRoiLeft = left[leftYTop1:leftYBottom1 + 1, leftXTop1:leftXBottom1 + 1]
-
-                    print("top coordinates: " + str(leftYTop1) + " " + str(leftXBottom1))
-                    print("bottom coordinates: " + str(rightYBottom1) + " " + str(rightXTop1 + (frame.shape[1] / 2)))
                     # label is sklearns function for doing blob analysis of a binary image
                     blobs = label(blobsL > 0)
                     # Using pandas to make a dataframe of the data to make it more easily accessable
@@ -252,7 +248,7 @@ if __name__ == '__main__':
 
                     check = False
 
-                # Making ROI's again, this time in the while loop so it keeps updating, and not just doing it onee as once again, we need it for the
+                # Making ROI's again, this time in the while loop so it keeps updating, and not just doing it once as once again, we need it for the
                 # optical flow function
                 roiLeft = left[leftYTop1:leftYBottom1 + 1, leftXTop1:leftXBottom1 + 1]
                 roiRight = right[rightYTop1:rightYBottom1 + 1, rightXTop1:rightXBottom1 + 1]
@@ -298,6 +294,7 @@ if __name__ == '__main__':
                         closeCounter = 0
                         closeTimer = 0
                         print("fake close")
+
                     # If it makes 3 or more detection in the last 10 frames from the first detection save as correct detection. Also resets detection variables
                     if closeTimer > 10 and closeCounter > 3 and stillClosedBool == False:
                         closing = False
@@ -337,13 +334,13 @@ if __name__ == '__main__':
                                 # This code takes the image with the most good matches and saves it as our image to work with.
                                 if len(good_matches) > goodMatchesCounter:
                                     goodMatchesCounter = len(good_matches)
-                                    realImg = normalnormalPics[(frameCount-701) + anotherCounter]
+                                    realImg = normalnormalPics[(frameCount-701) + imgCounter]
                                     good_matches.clear()
                                 knn_matches = 0
-                                anotherCounter += 1
+                                imgCounter += 1
                             # Just resetting some variables.
                             goodMatchesCounter = 0
-                            anotherCounter = 0
+                            imgCounter = 0
                             featureImgs.clear()
 
                             # Save the chosen image on the pc.
@@ -378,25 +375,18 @@ if __name__ == '__main__':
                     closing = False
                     stillClosedBool = True
                     movementTimer += 1
+
                 # if the timer goes over 100 the grabbers have closed and we can start detecting for movement again.
                 if movementTimer > 80:
                     closeCounter = 0
                     movement = False
                     stillClosedBool = False
 
-                # shows the images, maybe delete some of these
+                # shows some images
                 cv2.imshow('hsvTresh', flowThresh)
-                # cv2.imshow('tresh2', closed2)
                 cv2.imshow('blobsL', f)
                 cv2.imshow('flow', draw_flow(maskedLeftGray, flow))
                 cv2.imshow('flow HSV', flowHSV)
-                # cv2.imshow('getMaskedLeft', maskedLeft)
-                # cv2.imshow('getMaskedRight', maskedRight)
-                # cv2.imshow('left', left)
-                # cv2.imshow('right', right)
-                # cv2.imshow('leftout', leftout)
-                # cv2.imshow('rightout', rightout)
-                # cv2.imshow('templatematch', resultL)
 
         if cv2.waitKey(1) == ord('s'):
             break
