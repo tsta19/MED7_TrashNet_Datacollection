@@ -217,73 +217,76 @@ if __name__ == '__main__':
                         rightCnts, right, contourVal)
                     # Making ROI's for the left grabber.
                     prevRoiLeft = left[leftYTop1:leftYBottom1 + 1, leftXTop1:leftXBottom1 + 1]
-                    prevRoiRight = right[rightYTop1:rightYBottom1 + 1, rightYTop1:rightYBottom1 + 1]
+                    prevRoiRight = right[rightYTop1:rightYBottom1 + 1, rightXTop1:rightXBottom1 + 1]
 
 
                     print("top coordinates: " + str(leftYTop1) + " " + str(leftXBottom1))
                     print("bottom coordinates: " + str(rightYBottom1) + " " + str(rightXTop1 + (frame.shape[1]/2)))
                     # label is sklearns function for doing blob analysis of a binary image
-                    blobs = label(blobsL > 0)
+                    #blobs = label(blobsL > 0)
                     blobs1 = label(blobsR > 0)
 
                     # Using pandas to make a dataframe of the data to make it more easily accessable
-                    df = pd.DataFrame(regionprops_table(blobs, properties=properties))
-                    dfR = pd.DataFrame(regionprops_table(blobs1, properties=properties))
+                    #df = pd.DataFrame(regionprops_table(blobs, properties=properties))
+
                     # Fills out both the grabber images as before this, there is a lot of holes in the image. Do it for both grabbers
                     closed = fillColor(leftout1)
                     closed2 = fillColor(rightout1)
                     # Fixes the ROI for the blobsL image, so it is the same size as the ones before, where we also made ROI's
-                    blobsLReal = blobsL[leftYTop1:leftYBottom1 + 1, leftXTop1:leftXBottom1 + 1]
-                    blobsRReal = blobsR[rightYTop1:rightYBottom1 + 1, rightYTop1:rightYBottom1 + 1]
+                    #blobsLReal = blobsL[leftYTop1:leftYBottom1 + 1, leftXTop1:leftXBottom1 + 1]
+                    blobsRReal = blobsR[rightYTop1:rightYBottom1 + 1, rightXTop1:rightXBottom1 + 1]
+
+                    dfR = pd.DataFrame(regionprops_table(blobsRReal, properties=properties))
                     # Area_opening is sklearns function for removing any unwanted blobs. Here we say all blobs under the threshold value of 200 less than the
                     # biggest blob in the image should be removed, so we are only left with the biggest blob which should be the grabber.
-                    f = area_opening(blobsLReal, max(df['area'] - 200), 1)
-                    f2 = area_opening(blobsRReal, max(dfR['area'] - 200), 1)
+                    #f = area_opening(blobsLReal, max(df['area'] - 200), 1)
+                    f2 = area_opening(blobsRReal, 1300, 1)
                     # Erode makes the threshold image smaller
-                    erodeF = cv2.erode(f, kernel1, iterations=3)
+                    #dialate = cv2.dilate(f2, kernel1, iterations=1)
+                    #erodeF = cv2.erode(f, kernel1, iterations=3)
                     erodeF2 = cv2.erode(f2, kernel1, iterations=3)
 
                     # maskOff function, uses the binary image of the grabber to make a new image, where only the white parts of the binary image
                     # is saved from the prevRoiLeft image.
                     maskedRightPrev = maskOff(prevRoiRight, erodeF2)
-                    maskedLeftPrev = maskOff(prevRoiLeft, erodeF)
+                    #maskedLeftPrev = maskOff(prevRoiLeft, erodeF)
                     # make a gray version, as this is needed for the optical flow function.
                     maskedRightPrevGray = cv2.cvtColor(maskedRightPrev, cv2.COLOR_BGR2GRAY)
-                    maskedLeftPrevGray = cv2.cvtColor(maskedLeftPrev, cv2.COLOR_BGR2GRAY)
+                    #maskedLeftPrevGray = cv2.cvtColor(maskedLeftPrev, cv2.COLOR_BGR2GRAY)
 
                     check = False
 
                 # Making ROI's again, this time in the while loop so it keeps updating, and not just doing it onee as once again, we need it for the
                 # optical flow function
                 roiLeft = left[leftYTop1:leftYBottom1 + 1, leftXTop1:leftXBottom1 + 1]
-                roiRight = right[rightYTop1:rightYBottom1, rightXTop1:rightXBottom1]
+                roiRight = right[rightYTop1:rightYBottom1 + 1, rightXTop1:rightXBottom1 + 1]
 
                 # New maskoff, only difference is this is agai in the while loop, so it keeps updating.
-                maskedLeft = maskOff(roiLeft, erodeF)
+                #maskedLeft = maskOff(roiLeft, erodeF)
                 maskedRight = maskOff(roiRight, erodeF2)
                 # Gray version again, needed for optical flow
                 maskedRightGray = cv2.cvtColor(maskedRight, cv2.COLOR_BGR2GRAY)
-                maskedLeftGray = cv2.cvtColor(maskedLeft, cv2.COLOR_BGR2GRAY)
+                #maskedLeftGray = cv2.cvtColor(maskedLeft, cv2.COLOR_BGR2GRAY)
 
                 # The optical flow function! Uses gray images of the current frame and the frame from just before
                 # Idk how the f it works. You can watch this video and still not understand it: https://www.youtube.com/watch?v=WrlH5hHv0gE&ab_channel=NicolaiNielsen-ComputerVision%26AI
-                flow = cv2.calcOpticalFlowFarneback(maskedLeftPrevGray, maskedLeftGray, None, 0.5, 3, 25, 3, 5, 1.2, 0)
+                #flow = cv2.calcOpticalFlowFarneback(maskedLeftPrevGray, maskedLeftGray, None, 0.5, 3, 25, 3, 5, 1.2, 0)
                 flow2 = cv2.calcOpticalFlowFarneback(maskedRightPrevGray, maskedRightGray, None, 0.5, 3, 25, 3, 5, 1.2, 0)
                 # Sets the previous frame to the current so it is ready for the next frame.
-                maskedLeftPrevGray = maskedLeftGray
+                #maskedLeftPrevGray = maskedLeftGray
                 maskedRightPrevGray = maskedRightGray
 
                 # Makes the hsv representation of the optical flow.
-                flowHSV = draw_hsv(flow)
+                #flowHSV = draw_hsv(flow)
                 flowHSVRight = draw_hsv(flow2)
 
                 # Makes binary image of the hsv image of the optical flow
-                flowThresh = cv2.inRange(flowHSV, (0, 0, 5), (180, 255, 255))
+                #flowThresh = cv2.inRange(flowHSV, (0, 0, 5), (180, 255, 255))
                 flowThreshRight = cv2.inRange(flowHSVRight, (0, 0, 5), (180, 255, 255))
                 # Blob analysis again to find the biggest blob
-                blobsT = label(flowThresh > 0)
+                #blobsT = label(flowThresh > 0)
                 blobsRight = label(flowThreshRight > 0)
-                dfLeft = pd.DataFrame(regionprops_table(blobsT, properties=properties))
+                #dfLeft = pd.DataFrame(regionprops_table(blobsT, properties=properties))
                 dfRight = pd.DataFrame(regionprops_table(blobsRight, properties=properties))
                 # If the biggest blob is over 400, the grabbers are moving!!
                 if len(dfRight) != 0 and max(dfRight['area']) > 400:
@@ -372,13 +375,14 @@ if __name__ == '__main__':
 
 
                 # shows the images, maybe delete some of these
-                cv2.imshow('hsvTresh', flowThresh)
+                #cv2.imshow('hsvTresh', flowThresh)
                 cv2.imshow('hsvtreshRight', flowThreshRight)
                 cv2.imshow('righterode', f2)
                 #cv2.imshow('tresh2', closed2)
                 #cv2.imshow('blobsL',f)
-                cv2.imshow('flow', draw_flow(maskedLeftGray, flow))
-                cv2.imshow('flow HSV', flowHSV)
+                #cv2.imshow('flow', draw_flow(maskedLeftGray, flow))
+                #cv2.imshow('flow HSV', flowHSV)
+                cv2.imshow('flowRight', draw_flow(maskedRightGray, flow2))
                 #cv2.imshow('getMaskedLeft', maskedLeft)
                 #cv2.imshow('getMaskedRight', maskedRight)
                 #cv2.imshow('left', left)
