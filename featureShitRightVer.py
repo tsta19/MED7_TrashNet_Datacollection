@@ -175,7 +175,7 @@ if __name__ == '__main__':
     frameCount = 0
     calibrating = True
     check = True
-    cap = cv2.VideoCapture('data/outside_videos/GL010044.mp4')
+    cap = cv2.VideoCapture('data/outside_videos/mergedPark.mp4')
     ret, frame = cap.read()
     motion = 0
     sparseOF = SparseOF()
@@ -202,7 +202,7 @@ if __name__ == '__main__':
     normalnormalPics = []
     imgCounter = 0
     numFeatImgs = 640
-
+    fakeCloseCoutner = 0
 
     ins = instanceSegmentation()
     ins.load_model("pointrend_resnet50.pkl", confidence=0.2)
@@ -221,15 +221,17 @@ if __name__ == '__main__':
         grayFrame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
         if frameCount > 150:
-            # colorSeg(motion, previousFrame, frame)
-            leftcnt, rightcnt, blobsR = getContourCoordinates(left, right)
-            print(frameCount)
-            # print(leftcnt)
-            # cv2.waitKey(0)
-            leftCnts.append(leftcnt)
-            rightCnts.append(rightcnt)
-
-            if frameCount > 400:
+            if frameCount > 150 and frameCount < 500:
+                # colorSeg(motion, previousFrame, frame)
+                leftcnt, rightcnt, blobsR = getContourCoordinates(left, right)
+                print(frameCount)
+                # print(leftcnt)
+                # cv2.waitKey(0)
+                leftCnts.append(leftcnt)
+                rightCnts.append(rightcnt)
+            if frameCount > 500:
+                print(frameCount)
+                fiftyFrame.pop(0)
                 # if statement used to make sure the code in the if statement only gets run once.
                 if check:
                     # Code to find the most common contour, as well as finding the coordinates to make a bounding box around the grabber.
@@ -263,18 +265,18 @@ if __name__ == '__main__':
 
 
 
+
                     dfR = pd.DataFrame(regionprops_table(blobsRAnal, properties=properties))
                     # Area_opening is sklearns function for removing any unwanted blobs. Here we say all blobs under the threshold value of 200 less than the
                     # biggest blob in the image should be removed, so we are only left with the biggest blob which should be the grabber.
                     # f = area_opening(blobsLReal, max(df['area'] - 200), 1)
-                    f2 = area_opening(blobsRReal, max(dfR['area'] - 1000), 1)
-                    cv2.imshow('r', f2)
-                    cv2.waitKey(0)
+                    f2 = area_opening(blobsRReal, max(dfR['area'] - 4000), 1)
+
 
                     # Erode makes the threshold image smaller
                     # dialate = cv2.dilate(f2, kernel1, iterations=1)
                     # erodeF = cv2.erode(f, kernel1, iterations=3)
-                    erodeF2 = cv2.erode(f2, kernel1, iterations=3)
+                    erodeF2 = cv2.erode(f2, kernel1, iterations=5)
 
                     # maskOff function, uses the binary image of the grabber to make a new image, where only the white parts of the binary image
                     # is saved from the prevRoiLeft image.
@@ -291,14 +293,7 @@ if __name__ == '__main__':
                 roiLeft = left[leftYTop1:leftYBottom1 + 1, leftXTop1:leftXBottom1 + 1]
                 roiRight = right[rightYTop1:rightYBottom1 + 1, rightXTop1:rightXBottom1 + 1]
 
-                grayFrameRoi = grayFrame[0:grayFrame.shape[0] - 180,
-                               leftXBottom1:int(rightXTop1 + (grayFrame.shape[1] / 2))]
-                normalFrameRoi = frame[0:grayFrame.shape[0] - 180,
-                                 leftXBottom1:int(rightXTop1 + (grayFrame.shape[1] / 2))]
-                normalnormalPicss = frame[0:grayFrame.shape[0], leftXBottom1:int(rightXTop1 + (grayFrame.shape[1] / 2))]
-                grayFrameArray.append(grayFrameRoi)
-                normalPics.append(normalFrameRoi)
-                normalnormalPics.append(normalnormalPicss)
+
                 # New maskoff, only difference is this is agai in the while loop, so it keeps updating.
                 # maskedLeft = maskOff(roiLeft, erodeF)
                 maskedRight = maskOff(roiRight, erodeF2)
@@ -342,64 +337,29 @@ if __name__ == '__main__':
                         closing = False
                         closeCounter = 0
                         closeTimer = 0
-                        print("fake close")
+                        #print("fake close")
+                        fakeCloseCoutner += 1
 
+                        print("Fake Close Counter: " + str(fakeCloseCoutner))
                     # If it makes 3 or more detection in the last 10 frames from the first detection save as correct detection. Also resets detection variables
-                    if closeTimer > 10 and closeCounter > 3 and stillClosedBool == False and len(fiftyFrame) > 700:
+                    if closeTimer > 10 and closeCounter > 3 and stillClosedBool == False and len(fiftyFrame) > 495:
                         closing = False
                         closeCounter = 0
                         closeTimer = 0
-                        screenVal = frame.shape[0] / 2
-                        minHessian = 400
+                        screenVal = 250 / 2
                         print("We closing!")
-
                         # Save image from 150 frames ago as picture of garbage. Makes ROI of the image, to filter out unnecessary noise.
 
-                        # In this feature extract version we use this as the image to do feature extraction from.
-                        saveImg = fiftyFrame[frameCount-40]
-                        # Make ROI, convert to gray.
-                        saveImgRoi = saveImg[0:saveImg.shape[0],leftXBottom1:int(rightXTop1 + (saveImg.shape[1] / 2))]
-                        saveImgRoiGray= cv2.cvtColor(saveImgRoi,cv2.COLOR_BGR2GRAY)
-
-                        # Append last 200 images into first in an array with gray images, and an array with normal images. Only begin
-                        # from th last 50th frame.The reason i minus framecount with 700, is because we only start appending images at 500 framecount.
-                        for i in range(frameCount-numFeatImgs,len(grayFrameArray)-40):
-                            featureImgs.append(grayFrameArray[i])
-                            normalPics.append(normalPics[i])
-                        # Do feature extraction on each image in array.
-                        for i in featureImgs:
-                        # Feature extract code, idk how it finds its matches. Just know that it outputs "good matches".
-                            detector = cv2.SIFT.create(0)
-                            keypoints1, descriptors1 = detector.detectAndCompute(saveImgRoiGray, None)
-                            keypoints2, descriptors2 = detector.detectAndCompute(i, None)
-
-                            matcher = cv2.DescriptorMatcher_create(cv2.DescriptorMatcher_FLANNBASED)
-                            knn_matches = matcher.knnMatch(descriptors1, descriptors2, 2)
-                            # Treshold for when it is a good match.
-                            ratio_thresh = 0.7
-                            good_matches = []
-                            for m, n in knn_matches:
-                                if m.distance < ratio_thresh * n.distance:
-                                    good_matches.append(m)
-                            # This code takes the image with the most good matches and saves it as our image to work with.
-                            if len(good_matches) > goodMatchesCounter:
-                                goodMatchesCounter = len(good_matches)
-                                realImg = normalnormalPics[(frameCount-(numFeatImgs + 1)) + imgCounter]
-                                resize = cv2.resize(realImg, (250, 250))
-                                good_matches.clear()
-                            knn_matches = 0
-                            imgCounter += 1
-                        # Just resetting some variables.
-                        goodMatchesCounter = 0
-                        imgCounter = 0
-                        featureImgs.clear()
-
-                            # Save the chosen image on the pc.
-                        cv2.imwrite("data/savedimages/garbage" + str(imNum) + ".png", resize)
+                        saveImg = fiftyFrame[500 - 40]
+                        saveImgRoi = saveImg[0:saveImg.shape[0],
+                                     leftXBottom1:int(rightXTop1 + (saveImg.shape[1] / 2))]
+                        resize = cv2.resize(saveImgRoi, (250, 250))
+                        # Save the chosen image on the pc.
+                        cv2.imwrite("data/savedimagesPark/garbage" + str(imNum) + ".png", resize)
                         # The code line for the neural network segmentation of the image.
-                        results, output = ins.segmentImage("data/savedimages/garbage" + str(imNum) + ".png",
+                        results, output = ins.segmentImage("data/savedimagesPark/garbage" + str(imNum) + ".png",
                                                            show_bboxes=True,
-                                                           output_image_name="data/savedimages/segmented" + str(
+                                                           output_image_name="data/savedimagesPark/segmented" + str(
                                                                imNum) + ".png")
                         # Goes through all the bounding boxes that is found by the NN on the image and chooses the one closest to the grabbers position.
                         for i in range(0, len(results['boxes'])):
@@ -430,14 +390,14 @@ if __name__ == '__main__':
                             nheight = height / resize.shape[0]
 
                             cv2.rectangle(resize, (bbx1, bby1), (bbx2, bby2), (0, 255, 0), thickness=2)
-                            cv2.imwrite("data/savedimages/bbox" + str(imNum) + ".png", resize)
-                            f1 = open("data/yolo/" + str(imNum) + ".txt", "w+")
+                            cv2.imwrite("data/savedimagesPark/bbox" + str(imNum) + ".png", resize)
+                            f1 = open("data/yoloPark/" + str(imNum) + ".txt", "w+")
                             f1.write("Class here " + str(ncenterX) + " " + str(ncenterY) + " " + str(nwidth) + " " + str(
                                 nheight))
                             f1.close()
                         # Resets the minBoundingVal variable so it is ready for a new image segmentation. Also sets movement to tru to start the timer.
                             minBoundingVal = 1000
-                            imNum += 1
+                        imNum += 1
                         movement = True
                 # If correct detection happens, start a timer that resets everytime a detection happens after the first one,
                 # until 100 frames passes without a new detection, so we know that the grabbers have closed
