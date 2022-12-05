@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 
 
 if __name__ == '__main__':
-    cap = cv2.VideoCapture('data/GL010021.mp4')
+    cap = cv2.VideoCapture('data/outside_videos/GL010021.mp4')
     imgArray = []
     treshold = 40
     counter = 0

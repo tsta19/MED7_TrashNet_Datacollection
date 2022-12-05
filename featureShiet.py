@@ -36,6 +36,7 @@ def getContourCoordinates(leftRegionIMG, rightRegionIMG):
     blobsL = np.zeros_like(leftCanny)
     blobsL[xL, yL] = 255
 
+
     contoursR, hierarchy = cv2.findContours(blobsR, cv2.RETR_LIST, cv2.CHAIN_APPROX_TC89_KCOS)
     contoursL, hierarchy = cv2.findContours(blobsL, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -53,6 +54,7 @@ def getContourCoordinates(leftRegionIMG, rightRegionIMG):
                 largestCntL = contoursL[i]
     else:
         largestCntL = contoursL[0]
+
 
     return largestCntL, largestCntR, blobsL
 
@@ -97,7 +99,6 @@ def findMostCommonContour(contourCoordinates, image, val):
     cv2.imshow('out', out)
 
     return mostCommonCnt, out, topy, topx, bottomy, bottomx
-
 
 # Draws contours around an binary image, and fills it with white.
 def fillColor(image):
@@ -161,7 +162,7 @@ if __name__ == '__main__':
     frameCount = 0
     calibrating = True
     check = True
-    cap = cv2.VideoCapture('data/outside_videos/GL010031.MP4')
+    cap = cv2.VideoCapture('data/outside_videos/GL010044.MP4')
     ret, frame = cap.read()
     sparseOF = SparseOF()
     leftCnts = []
@@ -235,9 +236,12 @@ if __name__ == '__main__':
                     closed2 = fillColor(rightout1)
                     # Fixes the ROI for the blobsL image, so it is the same size as the ones before, where we also made ROI's
                     blobsLReal = blobsL[leftYTop1:leftYBottom1 + 1, leftXTop1:leftXBottom1 + 1]
+
                     # Area_opening is sklearns function for removing any unwanted blobs. Here we say all blobs under the threshold value of 200 less than the
                     # biggest blob in the image should be removed, so we are only left with the biggest blob which should be the grabber.
                     f = area_opening(blobsLReal, max(df['area'] - 200), 1)
+                    cv2.imshow('R', f)
+                    cv2.waitKey(0)
                     # Erode makes the threshold image smaller
                     erodeF = cv2.erode(f, kernel1, iterations=3)
                     # maskOff function, uses the binary image of the grabber to make a new image, where only the white parts of the binary image
@@ -247,6 +251,7 @@ if __name__ == '__main__':
                     maskedLeftPrevGray = cv2.cvtColor(maskedLeftPrev, cv2.COLOR_BGR2GRAY)
 
                     check = False
+
 
                 # Making ROI's again, this time in the while loop so it keeps updating, and not just doing it once as once again, we need it for the
                 # optical flow function

@@ -63,7 +63,9 @@ class Main:
             txtString = image.replace('bbox', "")
             txtStringEdited = txtString.replace('.png','.txt')
             replaceText = "Class here"
+            print("image name: " + image)
             currImage = np.asarray(cv2.imread(os.path.join(self.GetMainDirectory(), image)))
+            print(currImage.dtype)
             resizedImage = cv2.resize(currImage, (500, 500))
             with open(f"{self.GetTXTDirectory()}/{txtStringEdited}", "r") as file:
                 filedata = file.read()
