@@ -398,8 +398,10 @@ if __name__ == '__main__':
                             f1.close()
                         # Resets the minBoundingVal variable so it is ready for a new image segmentation. Also sets movement to tru to start the timer.
                             minBoundingVal = 1000
-                            imNum += 1
+
+                        imNum += 1
                         movement = True
+
                 # If correct detection happens, start a timer that resets everytime a detection happens after the first one,
                 # until 100 frames passes without a new detection, so we know that the grabbers have closed
                 if movement:

@@ -60,10 +60,12 @@ class Main:
         """ Iterates over images in the image directory where you can input a class from 1-6 and update a text file accordingly"""
         for image in os.listdir(self.GetMainDirectory()):
             imageString = image.replace(".jpg", ".txt")
-            replaceText = "Class_Here"
+            txtString = image.replace('bbox', "")
+            txtStringEdited = txtString.replace('.png','.txt')
+            replaceText = "Class here"
             currImage = np.asarray(cv2.imread(os.path.join(self.GetMainDirectory(), image)))
             resizedImage = cv2.resize(currImage, (500, 500))
-            with open(f"{self.GetTXTDirectory()}/{imageString}", "r") as file:
+            with open(f"{self.GetTXTDirectory()}/{txtStringEdited}", "r") as file:
                 filedata = file.read()
                 cv2.imshow(f"{image} / {len(os.listdir(self.GetMainDirectory()))}", resizedImage)
                 cv2.waitKey(100)
@@ -75,19 +77,19 @@ class Main:
                     print("You fucked up, try again!")
                     self.check_user_input()
                 elif userInput == "1":
-                    with open(f"{self.GetUPTXTDirectory()}/{imageString}", "w") as file:
+                    with open(f"{self.GetUPTXTDirectory()}/{txtStringEdited}", "w") as file:
                         filedata = filedata.replace(replaceText, str(1))
                         file.write(filedata)
                         shutil.move(self.GetMainDirectory() + "/" + image, self.ThePathFinder("categories", "metal"))
                         print(f"Moved {image} to class 1")
                 elif userInput == "2":
-                    with open(f"{self.GetUPTXTDirectory()}/{imageString}", "w") as file:
+                    with open(f"{self.GetUPTXTDirectory()}/{txtStringEdited}", "w") as file:
                         filedata = filedata.replace(replaceText, str(2))
                         file.write(filedata)
                         shutil.move(self.GetMainDirectory() + "/" + image, self.ThePathFinder("categories", "plastic"))
                         print(f"Moved {image} to class 2")
                 elif userInput == "3":
-                    with open(f"{self.GetUPTXTDirectory()}/{imageString}", "w") as file:
+                    with open(f"{self.GetUPTXTDirectory()}/{txtStringEdited}", "w") as file:
                         filedata = filedata.replace(replaceText, str(3))
                         file.write(filedata)
                         shutil.move(self.GetMainDirectory() + "/" + image, self.ThePathFinder("categories", "restaffald"))
