@@ -159,7 +159,7 @@ if __name__ == '__main__':
     frameCount = 0
     calibrating = True
     check = True
-    cap = cv2.VideoCapture('data/outside_videos/GL010033.MP4')
+    cap = cv2.VideoCapture('data/city/GL010044')
     ret, frame = cap.read()
     motion = 0
     sparseOF = SparseOF()
