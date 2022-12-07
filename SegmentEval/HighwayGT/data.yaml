@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 1
+names: ['Litter']
+
+roboflow:
+  workspace: aau-litter-collection
+  project: litterlocationseperated
+  version: 2
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/aau-litter-collection/litterlocationseperated/dataset/2
