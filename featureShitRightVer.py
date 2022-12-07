@@ -175,7 +175,7 @@ if __name__ == '__main__':
     frameCount = 0
     calibrating = True
     check = True
-    cap = cv2.VideoCapture('data/outside_videos/mergedHighway.mp4')
+    cap = cv2.VideoCapture('data/outside_videos/mergedPark.mp4')
     ret, frame = cap.read()
     motion = 0
     sparseOF = SparseOF()
@@ -355,11 +355,11 @@ if __name__ == '__main__':
                                      leftXBottom1:int(rightXTop1 + (saveImg.shape[1] / 2))]
                         resize = cv2.resize(saveImgRoi, (250, 250))
                         # Save the chosen image on the pc.
-                        cv2.imwrite("data/savedimagesHighway/garbage" + str(imNum) + ".png", resize)
+                        cv2.imwrite("data/savedimagesPark/garbage" + str(imNum) + ".png", resize)
                         # The code line for the neural network segmentation of the image.
-                        results, output = ins.segmentImage("data/savedimagesHighway/garbage" + str(imNum) + ".png",
+                        results, output = ins.segmentImage("data/savedimagesPark/garbage" + str(imNum) + ".png",
                                                            show_bboxes=True,
-                                                           output_image_name="data/savedimagesHighway/segmented" + str(
+                                                           output_image_name="data/savedimagesPark/segmented" + str(
                                                                imNum) + ".png")
                         # Goes through all the bounding boxes that is found by the NN on the image and chooses the one closest to the grabbers position.
                         for i in range(0, len(results['boxes'])):
@@ -390,14 +390,14 @@ if __name__ == '__main__':
                             nheight = height / resize.shape[0]
 
                             cv2.rectangle(resize, (bbx1, bby1), (bbx2, bby2), (0, 255, 0), thickness=2)
-                            cv2.imwrite("data/savedimagesHighway/bbox" + str(imNum) + ".png", resize)
-                            f1 = open("data/yoloHighway/" + str(imNum) + ".txt", "w+")
+                            cv2.imwrite("data/savedimagesPark/bbox" + str(imNum) + ".png", resize)
+                            f1 = open("data/yoloPark/" + str(imNum) + ".txt", "w+")
                             f1.write("Class here " + str(ncenterX) + " " + str(ncenterY) + " " + str(nwidth) + " " + str(
                                 nheight))
                             f1.close()
                         # Resets the minBoundingVal variable so it is ready for a new image segmentation. Also sets movement to tru to start the timer.
                             minBoundingVal = 1000
-                        imNum += 1
+                            imNum += 1
                         movement = True
                 # If correct detection happens, start a timer that resets everytime a detection happens after the first one,
                 # until 100 frames passes without a new detection, so we know that the grabbers have closed

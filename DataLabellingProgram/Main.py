@@ -80,19 +80,19 @@ class Main:
                     self.check_user_input()
                 elif userInput == "1":
                     with open(f"{self.GetUPTXTDirectory()}/{txtStringEdited}", "w") as file:
-                        filedata = filedata.replace(replaceText, str(1))
+                        filedata = filedata.replace(replaceText, str(0))
                         file.write(filedata)
                         shutil.move(self.GetMainDirectory() + "/" + image, self.ThePathFinder("categories", "metal"))
                         print(f"Moved {image} to class 1")
                 elif userInput == "2":
                     with open(f"{self.GetUPTXTDirectory()}/{txtStringEdited}", "w") as file:
-                        filedata = filedata.replace(replaceText, str(2))
+                        filedata = filedata.replace(replaceText, str(1))
                         file.write(filedata)
                         shutil.move(self.GetMainDirectory() + "/" + image, self.ThePathFinder("categories", "plastic"))
                         print(f"Moved {image} to class 2")
                 elif userInput == "3":
                     with open(f"{self.GetUPTXTDirectory()}/{txtStringEdited}", "w") as file:
-                        filedata = filedata.replace(replaceText, str(3))
+                        filedata = filedata.replace(replaceText, str(2))
                         file.write(filedata)
                         shutil.move(self.GetMainDirectory() + "/" + image, self.ThePathFinder("categories", "restaffald"))
                         print(f"Moved {image} to class 3")
