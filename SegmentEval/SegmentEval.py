@@ -2,6 +2,111 @@ import pandas as pd
 import os
 import numpy as np
 from Evaluate import *
+import matplotlib.pyplot as plt
+
+
+def get_precision(tp, fp):
+    try:
+        precision = tp/(tp + fp)
+    except ZeroDivisionError:
+        precision = 0.0
+
+    return precision
+
+def get_recall(tp, fn):
+    try:
+        recall = tp/(tp + fn)
+    except ZeroDivisionError:
+        recall = 0.0
+
+    return recall
+
+def EvaluateResults(dirPred, pathPred, dirGT, pathGT):
+    Pred = []
+    GT = []
+
+    for file in range(0, len(dirPred)):
+        #Each row is: class x_center y_center width height
+        with open (pathPred + dirPred[file], "r") as myfile:
+            data = myfile.read().split(" ")
+            #print(data)
+            #print(data[2])
+            x_center = float(data[2])
+            y_center = float(data[3])
+            width = float(data[4])
+            height = float(data[5])
+
+            xmin = x_center - width/2
+            ymin = y_center - height/2
+            xmax = x_center + width/2
+            ymax = y_center + height/2
+
+            bboxPred = [xmin, ymin, xmax, ymax]
+            Pred.append(bboxPred)
+
+
+        with open (pathGT + dirGT[file], "r") as valfile:
+            dataVal = valfile.read().split(" ")
+            x_centerVal = float(dataVal[1])
+            y_centerVal = float(dataVal[2])
+            widthVal = float(dataVal[3])
+            heightVal = float(dataVal[4])
+
+            xminVal = x_centerVal - widthVal/2
+            yminVal = y_centerVal - heightVal/2
+            xmaxVal = x_centerVal + widthVal/2
+            ymaxVal = y_centerVal + heightVal/2
+
+            bboxGT = [xminVal, yminVal, xmaxVal, ymaxVal]
+            GT.append(bboxGT)
+
+    IOUs = []
+    for i in range(0, len(GT)):
+        iou = calc_iou_individual(Pred[i], GT[i])
+        IOUs.append(iou)
+        print(f'IOU: {iou}')
+
+    sortedIOU = sorted(IOUs)
+    
+    avgIOUCity = np.average(IOUs)
+    print(f'Average IOU of City bboxes: {avgIOUCity}')
+    print(f'Lowest IOU of City bboxes: {np.min(IOUs)}')
+    print(f'Highest IOU of City bboxes: {np.max(IOUs)}')
+    print(f'Median IOU of City bboxes: {np.median(sortedIOU)}')
+
+    dicts = {}
+    resAtIIOU = []
+    yaxis = []
+    precisionAtIOU = []
+    recallAtIOU = []
+    for i in range(1, 96):
+        res = get_single_image_results(gt_boxes=GT, pred_boxes=Pred, iou_thr=i/100)
+        
+        resAtIIOU.append(res)
+        
+        precision = get_precision(tp=res.get('true_pos'), fp=res.get('false_pos'))
+        recall = get_recall(tp=res.get('true_pos'), fn=res.get('false_neg'))
+        precisionAtIOU.append(precision)
+        recallAtIOU.append(recall)
+        
+        yaxis.append(i/100)
+        
+    
+    
+    plt.scatter(np.arange(0, 0.95, 0.01), precisionAtIOU, s=8)
+    plt.title("Precision at different IOUs")
+    plt.xticks(np.arange(0, 1, 0.1))
+    plt.xlabel("IOUs")
+    plt.ylabel('Precision')
+    plt.show()
+
+    plt.scatter(np.arange(0, 0.95, 0.01), recallAtIOU, s=8)
+    plt.title("Recall at different IOUs")
+    plt.xticks(np.arange(0, 1, 0.1))
+    plt.xlabel("IOUs")
+    plt.ylabel('Recall')
+    plt.show()
+    
 
 if __name__ == "__main__":
 
@@ -23,53 +128,16 @@ if __name__ == "__main__":
     pathValPark = "SegmentEval//ParkGT//train//labels//"
     dirValPark = os.listdir("SegmentEval//ParkGT//train//labels")
     
-    cityPred = []
-    cityGT = []
-
-    for file in range(0, len(dirCity)):
-        #Each row is: class x_center y_center width height
-        with open (pathCity + dirCity[file], "r") as myfile:
-            data = myfile.read().split(" ")
-            #print(data)
-            #print(data[2])
-            x_center = float(data[2])
-            y_center = float(data[3])
-            width = float(data[4])
-            height = float(data[5])
-
-            xmin = x_center - width/2
-            ymin = y_center - height/2
-            xmax = x_center + width/2
-            ymax = y_center + height/2
-
-            bboxPred = [xmin, ymin, xmax, ymax]
-            cityPred.append(bboxPred)
-
-
-        with open (pathValCity + dirValCity[file], "r") as valfile:
-            dataVal = valfile.read().split(" ")
-            x_centerVal = float(dataVal[1])
-            y_centerVal = float(dataVal[2])
-            widthVal = float(dataVal[3])
-            heightVal = float(dataVal[4])
-
-            xminVal = x_centerVal - widthVal/2
-            yminVal = y_centerVal - heightVal/2
-            xmaxVal = x_centerVal + widthVal/2
-            ymaxVal = y_centerVal + heightVal/2
-
-            bboxGT = [xminVal, yminVal, xmaxVal, ymaxVal]
-            cityGT.append(bboxGT)
-
-    IOUs = []
-    for i in range(0, len(cityGT)):
-        iou = calc_iou_individual(cityPred[i], cityGT[i])
-        IOUs.append(iou)
-        print(f'IOU: {iou}')
-
     
-    avgIOU = np.average(IOUs)
-    print(f'average IOU of City bboxes: {avgIOU}')
+    
+    
+        
+
+
+
+
+
+
 
     
 
