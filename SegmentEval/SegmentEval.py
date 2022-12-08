@@ -21,7 +21,7 @@ def get_recall(tp, fn):
 
     return recall
 
-def EvaluateResults(dirPred, pathPred, dirGT, pathGT):
+def EvaluateResults(dirPred, pathPred, dirGT, pathGT, env):
     Pred = []
     GT = []
 
@@ -68,11 +68,11 @@ def EvaluateResults(dirPred, pathPred, dirGT, pathGT):
 
     sortedIOU = sorted(IOUs)
     
-    avgIOUCity = np.average(IOUs)
-    print(f'Average IOU of City bboxes: {avgIOUCity}')
-    print(f'Lowest IOU of City bboxes: {np.min(IOUs)}')
-    print(f'Highest IOU of City bboxes: {np.max(IOUs)}')
-    print(f'Median IOU of City bboxes: {np.median(sortedIOU)}')
+    avgIOU = np.average(IOUs)
+    print(f'Average IOU of {env} bboxes: {avgIOU}')
+    print(f'Lowest IOU of {env} bboxes: {np.min(IOUs)}')
+    print(f'Highest IOU of {env} bboxes: {np.max(IOUs)}')
+    print(f'Median IOU of {env} bboxes: {np.median(sortedIOU)}')
 
     dicts = {}
     resAtIIOU = []
@@ -94,14 +94,14 @@ def EvaluateResults(dirPred, pathPred, dirGT, pathGT):
     
     
     plt.scatter(np.arange(0, 0.95, 0.01), precisionAtIOU, s=8)
-    plt.title("Precision at different IOUs")
+    plt.title(f"Precision at different IOUs: {env}")
     plt.xticks(np.arange(0, 1, 0.1))
     plt.xlabel("IOUs")
     plt.ylabel('Precision')
     plt.show()
 
     plt.scatter(np.arange(0, 0.95, 0.01), recallAtIOU, s=8)
-    plt.title("Recall at different IOUs")
+    plt.title(f"Recall at different IOUs: {env}")
     plt.xticks(np.arange(0, 1, 0.1))
     plt.xlabel("IOUs")
     plt.ylabel('Recall')
@@ -127,6 +127,13 @@ if __name__ == "__main__":
 
     pathValPark = "SegmentEval//ParkGT//train//labels//"
     dirValPark = os.listdir("SegmentEval//ParkGT//train//labels")
+
+    EvaluateResults(dirCity, pathCity, dirValCity, pathValCity, "City")
+    EvaluateResults(dirHighway, pathHighway, dirValHighway, pathValHighway, "Highway")
+    EvaluateResults(dirPark, pathPark, dirValPark, pathValPark, "Park")
+
+
+
     
     
     
