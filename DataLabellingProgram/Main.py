@@ -14,17 +14,17 @@ class Main:
 
     def GetMainDirectory(self):
         """ Path for the images """
-        main_directory = "DataLabellingProgram//newpics//city"
+        main_directory = "images/city"
         return main_directory
     
     def GetTXTDirectory(self):
         """ Path for the txt's """
-        txt_directory = "DataLabellingProgram//newlabels//city"
+        txt_directory = "txt_files/city"
         return txt_directory
     
     def GetUPTXTDirectory(self):
         """ Path for the updated txt's """
-        uptxt_directory = "DataLabellingProgram//updatednewlabes//city"
+        uptxt_directory = "updated_txt_files"
         return uptxt_directory
     
     def ThePathFinder(self, main_directory, folder_destination: str) -> str:
@@ -60,44 +60,40 @@ class Main:
         """ Iterates over images in the image directory where you can input a class from 1-6 and update a text file accordingly"""
         for image in os.listdir(self.GetMainDirectory()):
             imageString = image.replace(".jpg", ".txt")
-            #txtString = image.replace('bbox', "")
-            #txtStringEdited = txtString.replace('.jpg','.txt')
             replaceText = "0 "
-            print("image name: " + image)
             currImage = np.asarray(cv2.imread(os.path.join(self.GetMainDirectory(), image)))
-            print(currImage.dtype)
             resizedImage = cv2.resize(currImage, (500, 500))
             with open(f"{self.GetTXTDirectory()}/{imageString}", "r") as file:
                 filedata = file.read()
                 cv2.imshow(f"{image} / {len(os.listdir(self.GetMainDirectory()))}", resizedImage)
-                cv2.waitKey(100)
+                cv2.waitKey(100)        
 
-                availableClasses = ["1", "2", "3", "4"]
+                availableClasses = ["1", "2", "3", "4", "5", "6"]
                 userInput = self.check_user_input()
             
                 if userInput not in availableClasses:
                     print("You fucked up, try again!")
                     self.check_user_input()
                 elif userInput == "1":
-                    with open(f"{self.GetUPTXTDirectory()}/{imageString}", "w") as newfile:
-                        filedata = filedata.replace(replaceText, str(0)+' ')
-                        newfile.write(filedata)
-                        shutil.move(self.GetMainDirectory() + "/" + image, self.ThePathFinder("DataLabellingProgram//newcategories", "metal"))
+                    with open(f"{self.GetUPTXTDirectory()}/{imageString}", "w") as file:
+                        filedata = filedata.replace(replaceText, str(0) + " ")
+                        file.write(filedata)
+                        shutil.move(self.GetMainDirectory() + "/" + image, self.ThePathFinder("categories", "metal"))
                         print(f"Moved {image} to class 1")
                 elif userInput == "2":
-                    with open(f"{self.GetUPTXTDirectory()}/{imageString}", "w") as newfile:
-                        filedata = filedata.replace(replaceText, str(1)+' ')
-                        newfile.write(filedata)
-                        shutil.move(self.GetMainDirectory() + "/" + image, self.ThePathFinder("DataLabellingProgram//newcategories", "plastic"))
+                    with open(f"{self.GetUPTXTDirectory()}/{imageString}", "w") as file:
+                        filedata = filedata.replace(replaceText, str(1) + " ")
+                        file.write(filedata)
+                        shutil.move(self.GetMainDirectory() + "/" + image, self.ThePathFinder("categories", "plastic"))
                         print(f"Moved {image} to class 2")
                 elif userInput == "3":
-                    with open(f"{self.GetUPTXTDirectory()}/{imageString}", "w") as newfile:
-                        filedata = filedata.replace(replaceText, str(2)+' ')
-                        newfile.write(filedata)
-                        shutil.move(self.GetMainDirectory() + "/" + image, self.ThePathFinder("DataLabellingProgram//newcategories", "restaffald"))
+                    with open(f"{self.GetUPTXTDirectory()}/{imageString}", "w") as file:
+                        filedata = filedata.replace(replaceText, str(2) + " ")
+                        file.write(filedata)
+                        shutil.move(self.GetMainDirectory() + "/" + image, self.ThePathFinder("categories", "restaffald"))
                         print(f"Moved {image} to class 3")
                 elif userInput == "4":
-                    shutil.move(self.GetMainDirectory() + "/" + image, self.ThePathFinder("DataLabellingProgram//newcategories", "discarded"))
+                    shutil.move(self.GetMainDirectory() + "/" + image, self.ThePathFinder("categories", "discarded"))
                     print(f"Discarded {image}")
 
             cv2.destroyAllWindows()
