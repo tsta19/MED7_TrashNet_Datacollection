@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 3
+names: ['metal', 'plastic', 'restaffald']
+
+roboflow:
+  workspace: aau-litter-collection
+  project: litterdatafinal
+  version: 1
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/aau-litter-collection/litterdatafinal/dataset/1
