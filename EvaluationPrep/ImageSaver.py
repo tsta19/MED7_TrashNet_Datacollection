@@ -162,16 +162,18 @@ class ImageSaver:
 						scaleW = (image_size / imageArray.shape[0])
 						scaleH = (image_size / imageArray.shape[1])
 						####	Classes: Restaffald = 0, Plast/Hård plast/Blød plast = 1, Papir/pap = 2, Metal = 3
+						print(f'For image {index}, label: {data["images"][index]["annotations"][i]["label"]}')
 						if (data["images"][index]["annotations"][i]["label"]) == 'Restaffald':
 							label = 2
-						elif (data["images"][index]["annotations"][i]["label"]) == 'Plast' or 'Hard Plast' or 'Blød Plast':
+						elif (data["images"][index]["annotations"][i]["label"]) == 'Plast' or (data["images"][index]["annotations"][i]["label"]) == 'Hard Plast' or (data["images"][index]["annotations"][i]["label"]) == 'Blod Plast':
 							label = 1
-						elif (data["images"][index]["annotations"][i]["label"]) == 'Papir' or 'Pap':
+						elif (data["images"][index]["annotations"][i]["label"]) == 'Papir' or (data["images"][index]["annotations"][i]["label"]) == 'Pap':
 							label = 3
 						elif (data["images"][index]["annotations"][i]["label"]) == 'Metal':
 							label = 0
 						else:
 							label = 9
+						print(f'For image {index}, label: {label}')
 						newX = int((data["images"][index]["annotations"][i]["coordinates"]["x"] * scaleW))
 						newY = int((data["images"][index]["annotations"][i]["coordinates"]["y"] * scaleH))
 						newW = int((data["images"][index]["annotations"][i]["coordinates"]["width"] * scaleW))

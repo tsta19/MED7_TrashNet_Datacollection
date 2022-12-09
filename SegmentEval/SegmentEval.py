@@ -106,6 +106,13 @@ def EvaluateResults(dirPred, pathPred, dirGT, pathGT, env):
     plt.xlabel("IOUs")
     plt.ylabel('Recall')
     plt.show()
+
+    plt.plot(precisionAtIOU, recallAtIOU)
+    plt.title(f"Precision/Recall curve: {env}")
+    plt.xticks(np.arange(0, 1, 0.1))
+    plt.xlabel("Precision")
+    plt.ylabel('Recall')
+    plt.show()
     
 
 if __name__ == "__main__":
