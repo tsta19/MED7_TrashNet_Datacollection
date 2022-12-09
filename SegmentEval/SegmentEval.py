@@ -21,6 +21,12 @@ def get_recall(tp, fn):
 
     return recall
 
+def get_f1score(precisions, recalls):
+    f1 = np.divide(2 * (np.array(precisions) * np.array(recalls)), (np.array(precisions) + np.array(recalls)))
+
+    return f1
+
+
 def EvaluateResults(dirPred, pathPred, dirGT, pathGT, env):
     Pred = []
     GT = []
