@@ -127,9 +127,9 @@ if __name__ == "__main__":
     cntrLimitPlastic = 0
     cntrLimitRestaffald = 0
 
-    metal = 48
-    plastic = 200
-    restaffald = 496
+    metal = 11
+    plastic = 50
+    restaffald = 123
     l = 0
 
     #filterUselessClass(dirLabels=dirLabels, pathLabels=pathLabels, newpath=newPath)
@@ -138,7 +138,7 @@ if __name__ == "__main__":
 
     
 
-    """  for i in range(0, int(len(newLabelDir)*0.75)):
+    for i in range(0, int(len(newLabelDir)*0.75)):
         if metal <= cntrLimitMetal and plastic <= cntrLimitPlastic and restaffald <= cntrLimitRestaffald:
             print(f"All limits met - Metal: {cntrLimitMetal}, Plastic: {cntrLimitPlastic}, Restaffald: {cntrLimitRestaffald}")
             break
@@ -178,8 +178,9 @@ if __name__ == "__main__":
 
 
     print(f"Picture index used : 0-{l}")
-    #verifyDirectory(dirLabels=movetoLabelDir, pathLabels=movetoLabelPath, dirImages=movetoImgDir, imgpath=movetoImgPath, oldimgpath=pathImages) """
+    #verifyDirectory(dirLabels=movetoLabelDir, pathLabels=movetoLabelPath, dirImages=movetoImgDir, imgpath=movetoImgPath, oldimgpath=pathImages)
 
+    """
     for i in range(0, len(movetoLabelDir)):
          with open(f"{movetoLabelPath}/{movetoLabelDir[i]}", "r") as input:
             print("Checking dataset class sizes...")
@@ -205,6 +206,8 @@ if __name__ == "__main__":
                         cntrLimitRestaffald += 1
 
     print(f"Metal: {cntrLimitMetal}, Plastic: {cntrLimitPlastic}, Restaffald: {cntrLimitRestaffald}")
+
+"""
     
 
 
